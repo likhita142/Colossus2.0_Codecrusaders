@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login — MindFlex</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script type="module">
+    // Import Firebase modules
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0cLtX3gqVDUVQNbQ8uFGtKPQZn9cjKGY",
+      authDomain: "mind-flex-c4117.firebaseapp.com",
+      projectId: "mind-flex-c4117",
+      storageBucket: "mind-flex-c4117.appspot.com",
+      messagingSenderId: "828640054474",
+      appId: "1:828640054474:web:032c300466e5785bd1b833",
+      databaseURL: "https://mind-flex-c4117-default-rtdb.firebaseio.com"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    // Login function
+    window.handleLogin = async () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      if (!email || !password) {
+        alert("Please enter both email and password");
+        return;
+      }
+
+      try {
+        // Show loading state
+        document.getElementById("loginBtn").disabled = true;
+        document.getElementById("loginBtn").textContent = "Logging in...";
+
+        // Sign in with Firebase Auth
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Get user data from Realtime Database
+        const dbRef = ref(db);
+        const snapshot = await get(child(dbRef, `users/${user.uid}`));
+
+        if (snapshot.exists()) {
+          const userData = snapshot.val();
+
+          // Store user info in localStorage
+          localStorage.setItem("mindflexUser", JSON.stringify({
+            uid: user.uid,
+            name: userData.name,
+            email: user.email,
+            role: userData.role
+          }));
+
+          // Redirect based on role
+          if (userData.role === "doctor") {
+            window.location.href = "dashboard.html";
+          } else {
+            window.location.href = "index.html";
+          }
+        } else {
+          alert("User data not found. Please contact support.");
+          document.getElementById("loginBtn").disabled = false;
+          document.getElementById("loginBtn").textContent = "Login";
+        }
+      } catch (error) {
+        console.error("Login error:", error);
+        alert("Login failed: " + error.message);
+        document.getElementById("loginBtn").disabled = false;
+        document.getElementById("loginBtn").textContent = "Login";
+      }
+    };
+
+    // Signup function
+    window.handleSignup = async () => {
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+      const role = document.getElementById("role").value;
+
+      if (!name || !email || !password) {
+        alert("Please fill in all fields");
+        return;
+      }
+
+      try {
+        // Show loading state
+        document.getElementById("signupBtn").disabled = true;
+        document.getElementById("signupBtn").textContent = "Creating account...";
+
+        // Create user with Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Store user data in Realtime Database
+        await set(ref(db, `users/${user.uid}`), {
+          name,
+          email,
+          role,
+          createdAt: new Date().toISOString(),
+          data: {
+            memoryScores: [],
+            reactionTimes: [],
+            sequenceRecall: []
+          }
+        });
+
+        // Store user info in localStorage
+        localStorage.setItem("mindflexUser", JSON.stringify({
+          uid: user.uid,
+          name: name,
+          email: user.email,
+          role: role
+        }));
+
+        // Redirect based on role
+        if (role === "doctor") {
+          window.location.href = "dashboard.html";
+        } else {
+          window.location.href = "index.html";
+        }
+      } catch (error) {
+        console.error("Signup error:", error);
+        alert("Signup failed: " + error.message);
+        document.getElementById("signupBtn").disabled = false;
+        document.getElementById("signupBtn").textContent = "Sign Up";
+      }
+    };
+
+    // Initialize UI when DOM is loaded
+    window.addEventListener('DOMContentLoaded', () => {
+      // Get UI elements
+      const loginTab = document.getElementById('loginTab');
+      const signupTab = document.getElementById('signupTab');
+      const nameField = document.getElementById('nameField');
+      const loginBtn = document.getElementById('loginBtn');
+      const signupBtn = document.getElementById('signupBtn');
+      const inputs = document.querySelectorAll('input');
+
+      // Set up tab switching
+      loginTab.addEventListener('click', () => {
+        loginTab.classList.add('tab-active');
+        signupTab.classList.remove('tab-active');
+        nameField.style.display = 'none';
+        loginBtn.style.display = 'block';
+        signupBtn.style.display = 'none';
+      });
+
+      signupTab.addEventListener('click', () => {
+        signupTab.classList.add('tab-active');
+        loginTab.classList.remove('tab-active');
+        nameField.style.display = 'block';
+        loginBtn.style.display = 'none';
+        signupBtn.style.display = 'block';
+      });
+
+      // Handle Enter key press
+      inputs.forEach(input => {
+        input.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            const activeTab = document.querySelector('.tab-active').getAttribute('data-tab');
+            if (activeTab === 'login') {
+              handleLogin();
+            } else {
+              handleSignup();
+            }
+          }
+        });
+      });
+    });
+  </script>
+</head>
+<body class="bg-purple-50 flex items-center justify-center h-screen">
+  <div class="bg-white p-10 rounded-xl shadow-md w-full max-w-md">
+    <h1 class="text-3xl font-bold text-purple-700 mb-4 text-center">🧠 MindFlex</h1>
+
+    <!-- Tabs -->
+    <div class="flex border-b mb-6">
+      <button id="loginTab" data-tab="login" class="tab-active flex-1 py-2 font-medium text-purple-700 border-b-2 border-purple-600">Login</button>
+      <button id="signupTab" data-tab="signup" class="flex-1 py-2 font-medium text-gray-500 hover:text-purple-700">Sign Up</button>
+    </div>
+
+    <!-- Form -->
+    <div class="space-y-4">
+      <!-- Name field (hidden by default for login) -->
+      <div id="nameField" style="display: none;">
+        <input type="text" id="name" placeholder="Full Name" class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-purple-500" />
+      </div>
+
+      <!-- Email field -->
+      <div>
+        <input type="email" id="email" placeholder="Email Address" class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-purple-500" />
+      </div>
+
+      <!-- Password field -->
+      <div>
+        <input type="password" id="password" placeholder="Password" class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-purple-500" />
+      </div>
+
+      <!-- Role selection -->
+      <div>
+        <select id="role" class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-purple-500">
+          <option value="patient">Patient</option>
+          <option value="doctor">Doctor</option>
+        </select>
+      </div>
+
+      <!-- Login button -->
+      <button id="loginBtn" onclick="handleLogin()" class="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition duration-200">Login</button>
+
+      <!-- Sign Up button (hidden by default) -->
+      <button id="signupBtn" onclick="handleSignup()" style="display: none;" class="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition duration-200">Sign Up</button>
+    </div>
+
+    <!-- Additional info -->
+    <p class="text-sm text-gray-500 mt-6 text-center">By continuing, you agree to MindFlex's Terms of Service and Privacy Policy.</p>
+  </div>
+
+  <!-- Add some styling for the tabs -->
+  <style>
+    .tab-active {
+      border-bottom: 2px solid #7c3aed;
+      color: #7c3aed;
+    }
+  </style>
+</body>
+</html>

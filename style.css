@@ -1,0 +1,99 @@
+/* style.css */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f7f7ff;
+    color: #222;
+    line-height: 1.6;
+  }
+  
+  header {
+    background-color: #4b9cd3;
+    color: white;
+    padding: 20px;
+    text-align: center;
+  }
+  
+  nav a {
+    margin: 0 10px;
+    color: white;
+    text-decoration: none;
+  }
+  
+  main {
+    padding: 20px;
+  }
+  
+  ul {
+    list-style: none;
+    padding: 0;
+  }
+  
+  ul li {
+    margin: 10px 0;
+  }
+  
+  footer {
+    text-align: center;
+    padding: 10px;
+    background-color: #eee;
+    font-size: 14px;
+  }
+  #canvas-bg canvas {
+    width: 100vw;
+    height: 100vh;
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 0;
+  }
+  /* Transparent containers so the background is visible */
+  nav, section, footer {
+    background-color: rgba(255, 255, 255, 0.85); /* semi-transparent white */
+    backdrop-filter: blur(4px); /* adds nice blur effect */
+    z-index: 10;
+    position: relative;
+  }
+
+  /* Optional: remove default body background */
+  body {
+    background: transparent !important;
+  }
+  /* You can add in <style> inside <head> or in style.css */
+
+#canvas-bg canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    width: 100vw;
+    height: 100vh;
+  }
+  nav, section, footer {
+    background-color: rgba(255, 255, 255, 0.85); /* transparent */
+    backdrop-filter: blur(4px);
+    z-index: 10;
+    position: relative;
+  }
+  
+  body {
+    background: transparent !important;
+  }
+  #canvas-bg canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    width: 100vw;
+    height: 100vh;
+  }
+  nav, section, footer {
+    background-color: rgba(255, 255, 255, 0.85); /* Semi-transparent white */
+    backdrop-filter: blur(4px); /* Optional: adds a blur effect */
+    z-index: 10;
+    position: relative;
+  }
+    
+  

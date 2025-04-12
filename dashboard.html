@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Doctor Dashboard — MindFlex</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js with all required dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+
+  <!-- Firebase -->
+  <script type="module">
+    // Import Firebase modules
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut as firebaseSignOut } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+    import { getDatabase, ref, get, child, onValue } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0cLtX3gqVDUVQNbQ8uFGtKPQZn9cjKGY",
+      authDomain: "mind-flex-c4117.firebaseapp.com",
+      projectId: "mind-flex-c4117",
+      storageBucket: "mind-flex-c4117.appspot.com",
+      messagingSenderId: "828640054474",
+      appId: "1:828640054474:web:032c300466e5785bd1b833",
+      databaseURL: "https://mind-flex-c4117-default-rtdb.firebaseio.com"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    // Check authentication state
+    window.addEventListener('DOMContentLoaded', () => {
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          // User is signed in
+          const dbRef = ref(db);
+          const snapshot = await get(child(dbRef, `users/${user.uid}`));
+          if (snapshot.exists()) {
+            const userData = snapshot.val();
+            if (userData.role !== "doctor") {
+              // Redirect non-doctors to home page
+              window.location.href = "index.html";
+              return;
+            }
+
+            // Update doctor name in UI
+            document.getElementById("doctorName").textContent = userData.name || "Doctor";
+
+            // Load patients for this doctor
+            loadPatients();
+          } else {
+            // User record not found
+            window.location.href = "login.html";
+          }
+        } else {
+          // User is signed out
+          window.location.href = "login.html";
+        }
+      });
+    });
+
+    // Load patients from Realtime Database
+    async function loadPatients() {
+      try {
+        const usersRef = ref(db, 'users');
+        const patientSelect = document.getElementById("patientSelect");
+        patientSelect.innerHTML = '<option value="">Select a patient</option>';
+
+        let patientCount = 0;
+        let activeTodayCount = 0;
+        let totalProgress = 0;
+        let patientsWithProgress = 0;
+
+        // Get current date
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+
+        // Get all users
+        const snapshot = await get(usersRef);
+        if (snapshot.exists()) {
+          const users = snapshot.val();
+
+          // Loop through users
+          Object.entries(users).forEach(([userId, userData]) => {
+            if (userData.role === "patient") {
+              patientCount++;
+              const option = document.createElement("option");
+              option.value = userId;
+              option.textContent = userData.name;
+              patientSelect.appendChild(option);
+
+              // Check if patient was active today
+              if (userData.lastActive && userData.lastActive.includes(todayStr)) {
+                activeTodayCount++;
+              }
+
+              // Calculate progress for this patient
+              let patientProgress = calculatePatientProgress(userData.data || {});
+              if (patientProgress > 0) {
+                totalProgress += patientProgress;
+                patientsWithProgress++;
+              }
+            }
+          });
+        }
+
+        // Update UI with statistics
+        document.getElementById("patientCount").textContent = patientCount;
+        document.getElementById("activeToday").textContent = activeTodayCount;
+
+        // Calculate and display average progress
+        const averageProgress = patientsWithProgress > 0 ? Math.round(totalProgress / patientsWithProgress) : 0;
+        document.getElementById("averageProgress").textContent = averageProgress + "%";
+
+        // Set up change event
+        patientSelect.addEventListener("change", async (e) => {
+          const patientId = e.target.value;
+          if (patientId) {
+            try {
+              console.log('Loading data for patient:', patientId);
+              const patientRef = ref(db, `users/${patientId}`);
+              const snapshot = await get(patientRef);
+
+              if (snapshot.exists()) {
+                const patientData = snapshot.val();
+                console.log('Patient data retrieved:', patientData);
+
+                // Check if data exists
+                if (!patientData.data) {
+                  console.log('No game data found for this patient');
+                  patientData.data = {};
+                }
+
+                // Update patient name in UI
+                document.getElementById('patientName').textContent = patientData.name || 'Patient';
+
+                // Update charts with the data
+                updateCharts(patientData.data);
+              } else {
+                console.log('No data found for this patient');
+                updateCharts({});
+              }
+            } catch (error) {
+              console.error('Error loading patient data:', error);
+              updateCharts({});
+            }
+          } else {
+            // No patient selected, clear charts
+            updateCharts({});
+          }
+        });
+
+        // Trigger change event for the first patient in the list if any
+        if (patientSelect.options.length > 1) {
+          patientSelect.selectedIndex = 1; // Select the first patient (index 0 is the placeholder)
+          patientSelect.dispatchEvent(new Event('change'));
+        }
+      } catch (error) {
+        console.error("Error loading patients:", error);
+      }
+    }
+
+    // Function to update all charts
+    function updateCharts(data) {
+      console.log('Updating charts with data:', data);
+
+      try {
+        // Get data from the patient's data object
+        let memoryScores = data.memoryScores || [];
+        let reactionTimes = data.reactionTimes || [];
+
+        // Check both possible paths for sequence recall data
+        let sequenceScores = data.sequenceRecall || data.sequenceScores || [];
+
+        console.log('Raw memory scores:', memoryScores);
+        console.log('Raw reaction times:', reactionTimes);
+        console.log('Raw sequence scores:', sequenceScores);
+
+        // Debug: Log the entire data object to see all available properties
+        console.log('Complete data object:', data);
+
+        // Ensure we're working with arrays
+        if (!Array.isArray(memoryScores) && typeof memoryScores === 'object') {
+          memoryScores = Object.values(memoryScores);
+        }
+
+        if (!Array.isArray(reactionTimes) && typeof reactionTimes === 'object') {
+          reactionTimes = Object.values(reactionTimes);
+        }
+
+        if (!Array.isArray(sequenceScores) && typeof sequenceScores === 'object') {
+          sequenceScores = Object.values(sequenceScores);
+        }
+
+        // Ensure we have arrays (not null or undefined)
+        memoryScores = Array.isArray(memoryScores) ? memoryScores : [];
+        reactionTimes = Array.isArray(reactionTimes) ? reactionTimes : [];
+        sequenceScores = Array.isArray(sequenceScores) ? sequenceScores : [];
+
+        // Convert all values to numbers and filter out invalid values
+        memoryScores = memoryScores
+          .map(score => Number(score))
+          .filter(score => !isNaN(score));
+
+        reactionTimes = reactionTimes
+          .map(score => Number(score))
+          .filter(score => !isNaN(score));
+
+        sequenceScores = sequenceScores
+          .map(score => Number(score))
+          .filter(score => !isNaN(score));
+
+        console.log('Memory scores (processed):', memoryScores);
+        console.log('Reaction times (processed):', reactionTimes);
+        console.log('Sequence scores (processed):', sequenceScores);
+
+        // Update charts
+        updateChart(window.memoryChart, "memoryChart", "Memory Score", memoryScores);
+        updateChart(window.reactionChart, "reactionChart", "Reaction Time", reactionTimes);
+
+        // Special handling for sequence recall chart
+        console.log('Updating sequence chart with data:', sequenceScores);
+        if (sequenceScores && sequenceScores.length > 0) {
+          // Force destroy and recreate the sequence chart to fix rendering issues
+          if (window.sequenceChart) {
+            window.sequenceChart.destroy();
+            window.sequenceChart = null;
+          }
+        }
+        updateChart(window.sequenceChart, "sequenceChart", "Sequence Recall", sequenceScores);
+
+        // Show message if no data
+        const noDataMessage = document.getElementById("noDataMessage");
+        if (memoryScores.length === 0 && reactionTimes.length === 0 && sequenceScores.length === 0) {
+          console.log('No data available for this patient');
+          noDataMessage.style.display = "block";
+        } else {
+          noDataMessage.style.display = "none";
+        }
+      } catch (error) {
+        console.error('Error updating charts:', error);
+        document.getElementById("noDataMessage").style.display = "block";
+        document.getElementById("noDataMessage").textContent = "Error loading chart data. Please try again.";
+      }
+    }
+
+    // Function to update a single chart
+    function updateChart(chartInstance, canvasId, label, data) {
+      console.log(`Updating ${canvasId} chart with data:`, data);
+
+      try {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) {
+          console.error(`Canvas element with id ${canvasId} not found`);
+          return null;
+        }
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          console.error(`Could not get 2D context for canvas ${canvasId}`);
+          return null;
+        }
+
+        // Destroy existing chart if it exists
+        if (chartInstance) {
+          console.log(`Destroying existing ${canvasId} chart`);
+          chartInstance.destroy();
+        }
+
+        // If no data, create empty chart with message
+        if (!data || data.length === 0) {
+          console.log(`No data for ${canvasId} chart`);
+
+          const chartConfig = {
+            type: 'bar',
+            data: {
+              labels: ['No Data'],
+              datasets: [{
+                label: 'No data available',
+                data: [0],
+                backgroundColor: 'rgba(200, 200, 200, 0.2)',
+                borderColor: 'rgba(200, 200, 200, 1)'
+              }]
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false }
+              },
+              scales: {
+                y: { display: false },
+                x: { display: false }
+              }
+            }
+          };
+
+          const newChart = new Chart(ctx, chartConfig);
+          console.log(`Created empty chart for ${canvasId}`);
+
+          // Store reference to chart
+          if (canvasId === "memoryChart") window.memoryChart = newChart;
+          else if (canvasId === "reactionChart") window.reactionChart = newChart;
+          else if (canvasId === "sequenceChart") window.sequenceChart = newChart;
+
+          return newChart;
+        }
+
+        // Ensure data is valid
+        const validData = data.filter(value => value !== null && value !== undefined && !isNaN(Number(value)));
+        console.log(`Filtered valid data for ${canvasId}:`, validData);
+
+        if (validData.length === 0) {
+          console.log(`No valid data points for ${canvasId} after filtering`);
+          // Create empty chart instead of recursive call
+          const chartConfig = {
+            type: 'bar',
+            data: {
+              labels: ['No Data'],
+              datasets: [{
+                label: 'No valid data available',
+                data: [0],
+                backgroundColor: 'rgba(200, 200, 200, 0.2)',
+                borderColor: 'rgba(200, 200, 200, 1)'
+              }]
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: { display: false },
+                tooltip: { enabled: false }
+              },
+              scales: {
+                y: { display: false },
+                x: { display: false }
+              }
+            }
+          };
+
+          const newChart = new Chart(ctx, chartConfig);
+
+          // Store reference to chart
+          if (canvasId === "memoryChart") window.memoryChart = newChart;
+          else if (canvasId === "reactionChart") window.reactionChart = newChart;
+          else if (canvasId === "sequenceChart") window.sequenceChart = newChart;
+
+          return newChart;
+        }
+
+        // Create chart with actual data
+        console.log(`Creating ${canvasId} chart with ${validData.length} data points`);
+
+        // Customize chart based on type
+        let yAxisTitle = 'Score';
+        let chartColor = 'rgba(139, 92, 246, 1)'; // Default purple
+        let chartType = 'line';
+        let tension = 0.3;
+
+        if (canvasId === "memoryChart") {
+          chartColor = 'rgba(59, 130, 246, 1)'; // Blue
+          yAxisTitle = 'Level Reached';
+        } else if (canvasId === "reactionChart") {
+          chartColor = 'rgba(16, 185, 129, 1)'; // Green
+          yAxisTitle = 'Seconds';
+        } else if (canvasId === "sequenceChart") {
+          chartColor = 'rgba(236, 72, 153, 1)'; // Pink
+          yAxisTitle = 'Level Reached';
+          // Use bar chart for sequence recall to avoid rendering issues
+          chartType = 'bar';
+          tension = 0;
+        }
+
+        const chartConfig = {
+          type: chartType,
+          data: {
+            labels: validData.map((_, i) => `Session ${i + 1}`),
+            datasets: [{
+              label: label,
+              data: validData,
+              backgroundColor: chartColor.replace('1)', '0.2)'),
+              borderColor: chartColor,
+              borderWidth: 2,
+              tension: tension,
+              fill: true,
+              pointRadius: chartType === 'line' ? 4 : 0,
+              pointHoverRadius: chartType === 'line' ? 6 : 0,
+              barThickness: chartType === 'bar' ? 20 : undefined,
+              maxBarThickness: chartType === 'bar' ? 30 : undefined
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { display: true },
+              tooltip: {
+                mode: 'index',
+                intersect: false
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { stepSize: 1 },
+                title: {
+                  display: true,
+                  text: yAxisTitle
+                }
+              }
+            }
+          }
+        };
+
+        const newChart = new Chart(ctx, chartConfig);
+        console.log(`${canvasId} chart created successfully`);
+
+        // Store reference to chart
+        if (canvasId === "memoryChart") window.memoryChart = newChart;
+        else if (canvasId === "reactionChart") window.reactionChart = newChart;
+        else if (canvasId === "sequenceChart") window.sequenceChart = newChart;
+
+        return newChart;
+      } catch (error) {
+        console.error(`Error creating chart ${canvasId}:`, error);
+        return null;
+      }
+    }
+
+    // Function to calculate patient progress percentage
+    function calculatePatientProgress(data) {
+      try {
+        // Get all game data
+        const memoryScores = Array.isArray(data.memoryScores) ? data.memoryScores :
+                            (typeof data.memoryScores === 'object' && data.memoryScores ? Object.values(data.memoryScores) : []);
+
+        const reactionTimes = Array.isArray(data.reactionTimes) ? data.reactionTimes :
+                             (typeof data.reactionTimes === 'object' && data.reactionTimes ? Object.values(data.reactionTimes) : []);
+
+        const sequenceScores = Array.isArray(data.sequenceRecall) ? data.sequenceRecall :
+                              (typeof data.sequenceRecall === 'object' && data.sequenceRecall ? Object.values(data.sequenceRecall) : []);
+
+        // Alternative path for sequence scores
+        const altSequenceScores = Array.isArray(data.sequenceScores) ? data.sequenceScores :
+                                 (typeof data.sequenceScores === 'object' && data.sequenceScores ? Object.values(data.sequenceScores) : []);
+
+        // Combine both sequence score arrays
+        const combinedSequenceScores = [...sequenceScores, ...altSequenceScores];
+
+        // Calculate progress based on game participation and improvement
+        let progress = 0;
+
+        // Memory game progress (max 33%)
+        if (memoryScores.length > 0) {
+          // Base points for participation
+          progress += 10;
+
+          // Additional points for multiple sessions
+          progress += Math.min(memoryScores.length * 2, 15);
+
+          // Points for high scores
+          const maxMemoryScore = Math.max(...memoryScores.map(score => Number(score) || 0));
+          progress += Math.min(maxMemoryScore, 8);
+        }
+
+        // Reaction time progress (max 33%)
+        if (reactionTimes.length > 0) {
+          // Base points for participation
+          progress += 10;
+
+          // Additional points for multiple sessions
+          progress += Math.min(reactionTimes.length * 2, 15);
+
+          // Points for improvement (lower is better for reaction time)
+          const validTimes = reactionTimes.map(time => Number(time) || 0).filter(time => time > 0);
+          if (validTimes.length >= 2) {
+            const firstTime = validTimes[0];
+            const lastTime = validTimes[validTimes.length - 1];
+            if (lastTime < firstTime) {
+              progress += 8; // Improved reaction time
+            }
+          }
+        }
+
+        // Sequence recall progress (max 34%)
+        if (combinedSequenceScores.length > 0) {
+          // Base points for participation
+          progress += 10;
+
+          // Additional points for multiple sessions
+          progress += Math.min(combinedSequenceScores.length * 2, 15);
+
+          // Points for high scores
+          const maxSequenceScore = Math.max(...combinedSequenceScores.map(score => Number(score) || 0));
+          progress += Math.min(maxSequenceScore, 9);
+        }
+
+        return progress;
+      } catch (error) {
+        console.error('Error calculating patient progress:', error);
+        return 0;
+      }
+    }
+
+    // Make functions available globally
+    window.loadPatients = loadPatients;
+    window.updateCharts = updateCharts;
+    window.updateChart = updateChart;
+    window.calculatePatientProgress = calculatePatientProgress;
+
+    // Sign out function
+    window.signOut = async () => {
+      try {
+        await firebaseSignOut(auth);
+        localStorage.removeItem("mindflexUser");
+        window.location.href = "login.html";
+      } catch (error) {
+        console.error("Sign out error:", error);
+      }
+    };
+  </script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-purple-50 min-h-screen">
+  <!-- Navbar -->
+  <nav class="bg-white shadow-md px-6 py-4 flex justify-between items-center">
+    <div class="flex items-center">
+      <h1 class="text-xl font-bold text-purple-700">🧠 MindFlex</h1>
+    </div>
+    <div class="flex items-center space-x-4">
+      <span id="doctorName" class="text-gray-700">Doctor</span>
+      <a href="index.html" class="text-purple-600 hover:text-purple-800">Home</a>
+      <button onclick="signOut()" class="bg-purple-100 text-purple-700 px-3 py-1 rounded hover:bg-purple-200">Sign Out</button>
+    </div>
+  </nav>
+
+  <div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-purple-700 mb-6 text-center">Doctor Dashboard</h1>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div class="bg-white rounded-xl shadow p-6 text-center">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Total Patients</h3>
+        <p id="patientCount" class="text-3xl font-bold text-purple-600">0</p>
+      </div>
+      <div class="bg-white rounded-xl shadow p-6 text-center">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Active Today</h3>
+        <p id="activeToday" class="text-3xl font-bold text-purple-600">0</p>
+      </div>
+      <div class="bg-white rounded-xl shadow p-6 text-center">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Average Progress</h3>
+        <p id="averageProgress" class="text-3xl font-bold text-purple-600">0%</p>
+      </div>
+    </div>
+
+    <!-- Patient Dropdown -->
+    <div class="mb-8 w-full max-w-md mx-auto">
+      <label for="patientSelect" class="block text-sm font-medium text-gray-700 mb-2">Select Patient</label>
+      <select id="patientSelect" class="w-full px-4 py-2 rounded-lg border border-purple-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+        <option value="">Select a patient</option>
+      </select>
+    </div>
+
+    <!-- Patient Info -->
+    <div class="mb-6 bg-white p-6 rounded-xl shadow text-center">
+      <h2 id="patientName" class="text-xl font-semibold text-purple-700 mb-2">Select a patient</h2>
+      <p class="text-gray-600">View patient's cognitive training progress</p>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-container grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="bg-white p-6 rounded-xl shadow">
+        <h3 class="text-lg font-semibold mb-4 text-center">Memory Game Progress</h3>
+        <div class="chart-container" style="position: relative; height: 250px;">
+          <canvas id="memoryChart"></canvas>
+        </div>
+      </div>
+      <div class="bg-white p-6 rounded-xl shadow">
+        <h3 class="text-lg font-semibold mb-4 text-center">Reaction Time Progress</h3>
+        <div class="chart-container" style="position: relative; height: 250px;">
+          <canvas id="reactionChart"></canvas>
+        </div>
+      </div>
+      <div class="bg-white p-6 rounded-xl shadow">
+        <h3 class="text-lg font-semibold mb-4 text-center">Sequence Recall Progress</h3>
+        <div class="chart-container" style="position: relative; height: 250px;">
+          <canvas id="sequenceChart"></canvas>
+        </div>
+      </div>
+      <div id="noDataMessage" class="col-span-3 text-center text-gray-500 mt-4 p-6 bg-white rounded-xl shadow" style="display: none;">
+        <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <p class="text-lg">No data available for this patient yet.</p>
+        <p class="text-sm mt-2">Data will appear here once the patient completes cognitive training games.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize chart variables
+    window.memoryChart = null;
+    window.reactionChart = null;
+    window.sequenceChart = null;
+
+    // Initialize empty charts on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM fully loaded, initializing empty charts');
+
+      try {
+        // Create empty charts
+        const memoryCtx = document.getElementById('memoryChart').getContext('2d');
+        const reactionCtx = document.getElementById('reactionChart').getContext('2d');
+        const sequenceCtx = document.getElementById('sequenceChart').getContext('2d');
+
+        // Default empty chart configuration
+        const defaultConfig = {
+          type: 'bar',
+          data: {
+            labels: ['No Data'],
+            datasets: [{
+              label: 'Select a patient to view data',
+              data: [0],
+              backgroundColor: 'rgba(200, 200, 200, 0.2)',
+              borderColor: 'rgba(200, 200, 200, 1)'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: { enabled: false }
+            },
+            scales: {
+              y: { display: false },
+              x: { display: false }
+            }
+          }
+        };
+
+        // Create the charts
+        window.memoryChart = new Chart(memoryCtx, defaultConfig);
+        window.reactionChart = new Chart(reactionCtx, defaultConfig);
+        window.sequenceChart = new Chart(sequenceCtx, defaultConfig);
+
+        console.log('Empty charts initialized successfully');
+      } catch (error) {
+        console.error('Error initializing empty charts:', error);
+      }
+    });
+  </script>
+</body>
+</html>

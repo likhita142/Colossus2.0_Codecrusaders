@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MindFlex — Cognitive Game Suite</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- AOS (Animate on Scroll) -->
+    <link href="https://unpkg.com/aos@2.3.4/dist/aos.css" rel="stylesheet" />
+    <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+
+    <!-- Firebase -->
+    <script type="module">
+      // Import Firebase modules
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+      import { getAuth, onAuthStateChanged, signOut as firebaseSignOut } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+      import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js";
+
+      // Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyA0cLtX3gqVDUVQNbQ8uFGtKPQZn9cjKGY",
+        authDomain: "mind-flex-c4117.firebaseapp.com",
+        projectId: "mind-flex-c4117",
+        storageBucket: "mind-flex-c4117.appspot.com",
+        messagingSenderId: "828640054474",
+        appId: "1:828640054474:web:032c300466e5785bd1b833",
+        databaseURL: "https://mind-flex-c4117-default-rtdb.firebaseio.com"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getDatabase(app);
+
+      // Check authentication state
+      window.addEventListener('DOMContentLoaded', () => {
+        onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            // User is signed in
+            const dbRef = ref(db);
+            const snapshot = await get(child(dbRef, `users/${user.uid}`));
+            if (snapshot.exists()) {
+              const userData = snapshot.val();
+
+              // Update UI based on user role
+              updateNavbar(userData.name, userData.role);
+
+              // If doctor, offer link to dashboard
+              if (userData.role === "doctor") {
+                const heroSection = document.querySelector('.hero-section');
+                const dashboardLink = document.createElement('a');
+                dashboardLink.href = 'dashboard.html';
+                dashboardLink.className = 'bg-white text-purple-700 border border-purple-500 px-6 py-3 rounded-full font-semibold hover:bg-purple-100 transition ml-4';
+                dashboardLink.textContent = '👨‍⚕️ Doctor Dashboard';
+                heroSection.querySelector('.button-container').appendChild(dashboardLink);
+              }
+            }
+          } else {
+            // User is signed out - show default navbar
+            updateNavbar();
+          }
+        });
+      });
+
+      // Update navbar based on authentication state
+      function updateNavbar(userName, userRole) {
+        const navLinks = document.querySelector('.nav-links');
+
+        if (userName) {
+          // User is logged in
+          navLinks.innerHTML = `
+            <a href="#about" class="hover:text-purple-600 transition">About</a>
+            <a href="#games" class="hover:text-purple-600 transition">Games</a>
+            <span class="text-gray-700">${userName}</span>
+            <button onclick="signOut()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">Sign Out</button>
+          `;
+        } else {
+          // User is not logged in
+          navLinks.innerHTML = `
+            <a href="#about" class="hover:text-purple-600 transition">About</a>
+            <a href="#games" class="hover:text-purple-600 transition">Games</a>
+            <a href="login.html" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">Login</a>
+          `;
+        }
+      }
+
+      // Sign out function
+      window.signOut = async () => {
+        try {
+          await firebaseSignOut(auth);
+          localStorage.removeItem("mindflexUser");
+          window.location.reload();
+        } catch (error) {
+          console.error("Sign out error:", error);
+        }
+      };
+    </script>
+
+    <!-- Custom Tailwind Config -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              lavender: '#C3B1E1',
+              softpurple: '#A78BFA',
+            },
+            fontFamily: {
+              display: ['Poppins', 'sans-serif'],
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body class="bg-lavender text-gray-800 font-display">
+
+    <!-- Navbar -->
+    <nav class="flex justify-between items-center p-6 bg-white shadow z-10 relative">
+      <h1 class="text-2xl font-bold text-purple-600">🧠 MindFlex</h1>
+      <div class="nav-links space-x-4">
+        <a href="#about" class="hover:text-purple-600 transition">About</a>
+        <a href="#games" class="hover:text-purple-600 transition">Games</a>
+        <a href="login.html" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">Login</a>
+      </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section min-h-screen flex flex-col justify-center items-center bg-gradient-to-br from-lavender to-white text-center px-6 relative z-10">
+      <h1 class="text-6xl md:text-7xl font-bold text-purple-600 mb-6" data-aos="fade-down">
+        Welcome to MindFlex
+      </h1>
+      <p class="text-lg md:text-xl text-gray-700 max-w-2xl mb-8" data-aos="fade-up" data-aos-delay="200">
+        A cognitive rehab game suite to train memory, focus & reflexes — made for stroke survivors and seniors.
+      </p>
+      <div class="button-container flex flex-wrap justify-center gap-4">
+        <a href="#games" class="bg-purple-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-purple-700 transition" data-aos="zoom-in" data-aos-delay="400">
+          🧠 Explore Games
+        </a>
+        <!-- Dashboard link will be added here for doctors -->
+      </div>
+    </section>
+
+    <!-- About Section -->
+    <section id="about" class="py-20 px-6 md:px-20 bg-white text-center" data-aos="fade-up">
+      <h2 class="text-4xl font-bold text-purple-600 mb-6">What is MindFlex?</h2>
+      <p class="text-lg max-w-3xl mx-auto mb-10">
+        MindFlex is a browser-based cognitive training platform featuring memory and reflex games designed to support cognitive rehabilitation for stroke survivors and the elderly.
+      </p>
+
+      <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <div class="bg-lavender/30 p-6 rounded-xl" data-aos="fade-up" data-aos-delay="100">
+          <div class="text-3xl mb-4">🧩</div>
+          <h3 class="text-xl font-semibold mb-2">Engaging Games</h3>
+          <p>Fun, interactive games designed specifically for cognitive rehabilitation.</p>
+        </div>
+
+        <div class="bg-lavender/30 p-6 rounded-xl" data-aos="fade-up" data-aos-delay="200">
+          <div class="text-3xl mb-4">📊</div>
+          <h3 class="text-xl font-semibold mb-2">Progress Tracking</h3>
+          <p>Monitor improvement over time with detailed performance metrics.</p>
+        </div>
+
+        <div class="bg-lavender/30 p-6 rounded-xl" data-aos="fade-up" data-aos-delay="300">
+          <div class="text-3xl mb-4">👨‍⚕️</div>
+          <h3 class="text-xl font-semibold mb-2">Doctor Dashboard</h3>
+          <p>Healthcare providers can monitor patient progress and customize training.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Games Section -->
+    <section id="games" class="py-20 px-6 md:px-20 bg-lavender/30">
+      <h2 class="text-4xl font-bold text-purple-600 mb-10 text-center" data-aos="fade-up">Games Collection</h2>
+
+      <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <!-- Memory Match -->
+        <a href="games/memory.html" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition transform hover:-translate-y-1" data-aos="fade-up" data-aos-delay="100">
+          <div class="text-4xl mb-4">🃏</div>
+          <h3 class="text-2xl font-bold mb-2 text-purple-600">Memory Match</h3>
+          <p class="text-gray-600 mb-4">Flip and match emoji cards to train your short-term memory and concentration.</p>
+          <div class="text-purple-600 font-medium">Play Now →</div>
+        </a>
+
+        <!-- Reaction Time -->
+        <a href="games/reaction.html" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition transform hover:-translate-y-1" data-aos="fade-up" data-aos-delay="200">
+          <div class="text-4xl mb-4">⚡</div>
+          <h3 class="text-2xl font-bold mb-2 text-purple-600">Reaction Time</h3>
+          <p class="text-gray-600 mb-4">Test and improve your reaction speed by clicking on targets as they appear.</p>
+          <div class="text-purple-600 font-medium">Play Now →</div>
+        </a>
+
+        <!-- Sequence Recall -->
+        <a href="games/sequence.html" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition transform hover:-translate-y-1" data-aos="fade-up" data-aos-delay="300">
+          <div class="text-4xl mb-4">🎵</div>
+          <h3 class="text-2xl font-bold mb-2 text-purple-600">Sequence Recall</h3>
+          <p class="text-gray-600 mb-4">Remember and repeat sequences of colors to enhance working memory.</p>
+          <div class="text-purple-600 font-medium">Play Now →</div>
+        </a>
+      </div>
+
+      <div class="text-center mt-12">
+        <a href="games/tracker.html" class="inline-block bg-white text-purple-600 border border-purple-600 px-6 py-3 rounded-lg hover:bg-purple-50 transition" data-aos="fade-up">
+          📊 View Your Progress
+        </a>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-white py-8 text-center">
+      <div class="container mx-auto px-4">
+        <h2 class="text-2xl font-bold text-purple-600 mb-4">MindFlex</h2>
+        <p class="text-gray-600 mb-6">Cognitive rehabilitation through engaging gameplay</p>
+        <div class="flex justify-center space-x-6 mb-6">
+          <a href="#" class="text-gray-600 hover:text-purple-600">
+            <span class="sr-only">Facebook</span>
+            <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clip-rule="evenodd" />
+            </svg>
+          </a>
+          <a href="#" class="text-gray-600 hover:text-purple-600">
+            <span class="sr-only">Twitter</span>
+            <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
+            </svg>
+          </a>
+          <a href="#" class="text-gray-600 hover:text-purple-600">
+            <span class="sr-only">GitHub</span>
+            <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
+            </svg>
+          </a>
+        </div>
+        <p class="text-sm text-gray-500">© 2025 MindFlex. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <!-- Initialize AOS -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        AOS.init({
+          duration: 800,
+          once: true,
+        });
+      });
+    </script>
+  </body>
+</html>

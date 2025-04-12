@@ -1,0 +1,354 @@
+<!-- games/memory.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Memory Match Game — MindFlex</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .card {
+      perspective: 1000px;
+      transform-style: preserve-3d;
+      cursor: pointer;
+    }
+    .card-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      text-align: center;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
+    }
+    .card.flipped .card-inner {
+      transform: rotateY(180deg);
+    }
+    .card-front, .card-back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.75rem;
+    }
+    .card-front {
+      background-color: #8b5cf6;
+      color: white;
+    }
+    .card-back {
+      background-color: white;
+      color: black;
+      transform: rotateY(180deg);
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 min-h-screen flex flex-col items-center justify-center px-4 py-10 text-center">
+  <div class="bg-white/70 backdrop-blur-md rounded-2xl shadow-xl p-6 w-full max-w-lg">
+    <header class="mb-6">
+      <h1 class="text-4xl font-extrabold text-purple-700 mb-1">🃏 Memory Match Game</h1>
+      <p class="text-gray-600 mb-2">Flip and match all the cards as fast as you can!</p>
+      <a href="../index.html" class="text-blue-600 hover:underline">← Back to Home</a>
+    </header>
+
+    <main>
+      <p id="greeting" class="mb-4 text-lg font-semibold text-gray-700"></p>
+      <div class="flex justify-between text-sm text-gray-700 mb-4">
+        <p id="level">Level: 1</p>
+        <p id="moves">Moves: 0</p>
+        <p id="timer">Time: 0s</p>
+      </div>
+      <div id="gameBoard" class="grid grid-cols-4 gap-4 justify-center"></div>
+    </main>
+  </div>
+
+  <script>
+    // Preload and configure sound effects
+    const correctSound = new Audio("https://cdn.jsdelivr.net/gh/terkelg/sfx/click1.mp3");
+    const mismatchSound = new Audio("https://cdn.jsdelivr.net/gh/terkelg/sfx/deny.mp3");
+    const levelUpSound = new Audio("https://cdn.jsdelivr.net/gh/terkelg/sfx/confirm.mp3");
+
+    // Ensure sounds can be played after user gesture
+    document.addEventListener("click", () => {
+      correctSound.muted = false;
+      mismatchSound.muted = false;
+      levelUpSound.muted = false;
+    }, { once: true });
+
+    let time = 0;
+    let timerInterval = null;
+    let level = 1;
+    let flippedCards = [];
+    let moves = 0;
+    let matchedPairs = 0;
+
+    function startTimer() {
+      time = 0;
+      timerInterval = setInterval(() => {
+        time++;
+        document.getElementById('timer').textContent = "Time: " + time + "s";
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+    }
+
+    function startLevel() {
+      console.log("Starting level", level);
+      const emojisBase = ['🍎', '🍌', '🍇', '🍓', '🍒', '🍑', '🍉', '🍍'];
+      const emojis = emojisBase.slice(0, level + 1);
+      const pairs = [...emojis, ...emojis];
+      const shuffled = pairs.sort(() => 0.5 - Math.random());
+
+      const board = document.getElementById('gameBoard');
+      board.innerHTML = '';
+
+      flippedCards = [];
+      matchedPairs = 0;
+      moves = 0;
+      document.getElementById('moves').textContent = "Moves: 0";
+      document.getElementById('level').textContent = "Level: " + level;
+      document.getElementById('timer').textContent = "Time: 0s";
+
+      shuffled.forEach((emoji, index) => {
+        const card = document.createElement('div');
+        card.className = 'card w-16 h-16 shadow-md rounded-xl';
+        card.dataset.emoji = emoji;
+        card.dataset.index = index;
+
+        // Create card inner structure
+        const cardInner = document.createElement('div');
+        cardInner.className = 'card-inner';
+
+        const cardFront = document.createElement('div');
+        cardFront.className = 'card-front';
+        cardFront.innerHTML = '<span class="text-xl">?</span>';
+
+        const cardBack = document.createElement('div');
+        cardBack.className = 'card-back text-3xl';
+        cardBack.textContent = emoji;
+
+        cardInner.appendChild(cardFront);
+        cardInner.appendChild(cardBack);
+        card.appendChild(cardInner);
+
+        card.addEventListener('click', () => handleCardClick(card));
+
+        board.appendChild(card);
+      });
+    }
+
+    function handleCardClick(card) {
+      // Ignore clicks if card is already flipped or two cards are already flipped
+      if (card.classList.contains('flipped') || flippedCards.length === 2) return;
+
+      // Flip the card
+      card.classList.add('flipped');
+      flippedCards.push(card);
+
+      // If two cards are flipped, check for a match
+      if (flippedCards.length === 2) {
+        moves++;
+        document.getElementById('moves').textContent = "Moves: " + moves;
+
+        const firstCard = flippedCards[0];
+        const secondCard = flippedCards[1];
+
+        if (firstCard.dataset.emoji === secondCard.dataset.emoji) {
+          // Match found
+          correctSound.currentTime = 0;
+          correctSound.play();
+          matchedPairs++;
+          flippedCards = [];
+
+          // Check if level is complete
+          const totalPairs = level + 1;
+          if (matchedPairs === totalPairs) {
+            stopTimer();
+            levelUpSound.currentTime = 0;
+            levelUpSound.play();
+
+            // Save stats
+            let stats = JSON.parse(localStorage.getItem('memoryLevels') || '[]');
+            stats.push({ level, time, moves });
+            localStorage.setItem('memoryLevels', JSON.stringify(stats));
+
+            // Save to Firebase
+            saveScoreToFirebase("memoryScores", level);
+            console.log("Level completed!", level);
+
+            // Show level complete message
+            const message = document.createElement('div');
+            message.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50';
+            message.innerHTML = `
+              <div class="bg-white p-6 rounded-xl shadow-xl text-center">
+                <h2 class="text-2xl font-bold text-purple-700 mb-2">Level ${level} Complete!</h2>
+                <p class="mb-4">Moves: ${moves} | Time: ${time}s</p>
+                <button class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">Next Level</button>
+              </div>
+            `;
+            document.body.appendChild(message);
+
+            // Handle next level button
+            message.querySelector('button').addEventListener('click', () => {
+              document.body.removeChild(message);
+              level++;
+              startLevel();
+              startTimer();
+            });
+          }
+        } else {
+          // No match
+          mismatchSound.currentTime = 0;
+          mismatchSound.play();
+
+          // Flip cards back after delay
+          setTimeout(() => {
+            flippedCards.forEach(c => c.classList.remove('flipped'));
+            flippedCards = [];
+          }, 800);
+        }
+      }
+    }
+
+    // Get user info from localStorage
+    const userJson = localStorage.getItem("mindflexUser");
+    if (userJson) {
+      try {
+        const user = JSON.parse(userJson);
+        document.getElementById("greeting").textContent = "Welcome, " + (user.name || user) + " 👋";
+      } catch (e) {
+        document.getElementById("greeting").textContent = "Welcome, Player 👋";
+      }
+    } else {
+      window.location.href = "../login.html";
+    }
+
+    // Start the game
+    startLevel();
+    startTimer();
+  </script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+    import { getDatabase, ref, get, set, child } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0cLtX3gqVDUVQNbQ8uFGtKPQZn9cjKGY",
+      authDomain: "mind-flex-c4117.firebaseapp.com",
+      databaseURL: "https://mind-flex-c4117-default-rtdb.firebaseio.com",
+      projectId: "mind-flex-c4117",
+      storageBucket: "mind-flex-c4117.appspot.com",
+      messagingSenderId: "828640054474",
+      appId: "1:828640054474:web:032c300466e5785bd1b833"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth();
+    const db = getDatabase(app);
+
+    // Function to update user's game score
+    window.saveScoreToFirebase = async function(type, score) {
+      console.log(`Attempting to save ${type} score:`, score);
+
+      // Check if user is authenticated
+      const user = auth.currentUser;
+      if (user) {
+        console.log('User authenticated:', user.uid);
+
+        try {
+          // Get reference to the user's scores
+          const dataRef = ref(db, `users/${user.uid}/data/${type}`);
+          console.log('Database path:', `users/${user.uid}/data/${type}`);
+
+          // Get existing scores
+          const snapshot = await get(dataRef);
+          const existingData = snapshot.exists() ? snapshot.val() : [];
+          console.log('Existing data:', existingData);
+
+          // If the existing data is an object (from Firebase push), convert to array
+          const scores = Array.isArray(existingData)
+            ? existingData
+            : Object.values(existingData || {});
+
+          // Add new score
+          scores.push(score);
+          console.log('Updated scores array:', scores);
+
+          // Save to Firebase
+          await set(dataRef, scores);
+
+          // Update last active timestamp
+          const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+          await set(ref(db, `users/${user.uid}/lastActive`), today);
+
+          console.log(`✅ Successfully saved ${type} score:`, score);
+          return true;
+        } catch (error) {
+          console.error('❌ Error saving score to Firebase:', error);
+          return false;
+        }
+      } else {
+        console.log('❌ User not logged in, checking for auth state change...');
+
+        // Try to wait for auth state to change
+        return new Promise((resolve) => {
+          const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+              console.log('User authenticated after state change:', user.uid);
+              unsubscribe();
+
+              try {
+                const dataRef = ref(db, `users/${user.uid}/data/${type}`);
+                const snapshot = await get(dataRef);
+                const existingData = snapshot.exists() ? snapshot.val() : [];
+                const scores = Array.isArray(existingData) ? existingData : Object.values(existingData || {});
+                scores.push(score);
+                await set(dataRef, scores);
+
+                // Update last active timestamp
+                const today = new Date().toISOString().split('T')[0]; // Format: YYYY-MM-DD
+                await set(ref(db, `users/${user.uid}/lastActive`), today);
+
+                console.log(`✅ Saved ${type} score after auth state change:`, score);
+                resolve(true);
+              } catch (error) {
+                console.error('❌ Error saving score after auth state change:', error);
+                resolve(false);
+              }
+            } else {
+              console.log('❌ Still no user after auth state change');
+              unsubscribe();
+              resolve(false);
+            }
+          });
+
+          // Set a timeout to prevent waiting forever
+          setTimeout(() => {
+            unsubscribe();
+            console.log('❌ Timed out waiting for auth state change');
+            resolve(false);
+          }, 5000);
+        });
+      }
+    };
+
+    // Check if user is logged in
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log('User is logged in:', user.uid);
+      } else {
+        console.log('User is not logged in');
+      }
+    });
+  </script>
+
+</body>
+</html>

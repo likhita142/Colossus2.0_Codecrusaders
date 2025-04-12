@@ -1,0 +1,105 @@
+<!-- chat.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MindFlex AI Support</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f9f9f9;
+      padding: 20px;
+    }
+    .chat-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .messages {
+      height: 300px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 8px;
+      background: #f0f0f0;
+    }
+    .message {
+      margin: 5px 0;
+    }
+    .user { text-align: right; }
+    .bot { text-align: left; }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<script src="https://widget.cxgenie.ai/widget.js" data-aid="439f8d69-b945-4876-873c-6435f08dd4cc"
+		
+		 data-lang="en"></script>
+<body>
+  <div class="chat-container">
+    <h2>💬 MindFlex Support Bot</h2>
+    <p>Share what's on your mind, and I'll try to help.</p>
+    <div class="messages" id="messages"></div>
+    <input type="text" id="userInput" placeholder="Type your message..." />
+    <button onclick="sendMessage()">Send</button>
+    <a href="index.html">← Back to Home</a>
+  </div>
+
+  <script>
+    async function sendMessage() {
+      const input = document.getElementById("userInput");
+      const text = input.value.trim();
+      if (!text) return;
+
+      appendMessage("user", text);
+      input.value = "";
+
+      try {
+        const response = await fetch("http://localhost:5000/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ message: text })
+        });
+
+        const data = await response.json();
+        appendMessage("bot", data.reply);
+      } catch (error) {
+        appendMessage("bot", "Oops! Something went wrong. Please try again.");
+        console.error(error);
+      }
+    }
+
+    function appendMessage(role, text) {
+      const msgContainer = document.getElementById("messages");
+      const div = document.createElement("div");
+      div.className = "message " + role;
+      div.textContent = text;
+      msgContainer.appendChild(div);
+      msgContainer.scrollTop = msgContainer.scrollHeight;
+    }
+  </script>
+</body>
+</html>
