@@ -103,6 +103,25 @@
       };
     </script>
 
+    <!-- Import Voice Utilities -->
+    <script type="module">
+      import voiceUtility from './js/voice.js';
+      import VoiceSettings from './js/voice-settings.js';
+
+      // Initialize voice settings when DOM is loaded
+      document.addEventListener('DOMContentLoaded', () => {
+        const voiceSettings = new VoiceSettings();
+
+        // Make voice utility available globally
+        window.voiceUtility = voiceUtility;
+
+        // Welcome message with voice
+        setTimeout(() => {
+          voiceUtility.speak('Welcome to MindFlex, a cognitive rehabilitation platform. Explore our games to train your brain!');
+        }, 1000);
+      });
+    </script>
+
     <!-- Custom Tailwind Config -->
     <script>
       tailwind.config = {
@@ -182,7 +201,8 @@
 
       <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
         <!-- Memory Match -->
-        <a href="games/memory.html" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition transform hover:-translate-y-1" data-aos="fade-up" data-aos-delay="100">
+        <a href="games/memory.html" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition transform hover:-translate-y-1" data-aos="fade-up" data-aos-delay="100"
+           onmouseover="window.voiceUtility && window.voiceUtility.speak('Memory Match Game. Flip and match emoji cards to train your short-term memory.', true)">
           <div class="text-4xl mb-4">🃏</div>
           <h3 class="text-2xl font-bold mb-2 text-purple-600">Memory Match</h3>
           <p class="text-gray-600 mb-4">Flip and match emoji cards to train your short-term memory and concentration.</p>
@@ -190,7 +210,8 @@
         </a>
 
         <!-- Reaction Time -->
-        <a href="games/reaction.html" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition transform hover:-translate-y-1" data-aos="fade-up" data-aos-delay="200">
+        <a href="games/reaction.html" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition transform hover:-translate-y-1" data-aos="fade-up" data-aos-delay="200"
+           onmouseover="window.voiceUtility && window.voiceUtility.speak('Reaction Time Game. Test and improve your reaction speed.', true)">
           <div class="text-4xl mb-4">⚡</div>
           <h3 class="text-2xl font-bold mb-2 text-purple-600">Reaction Time</h3>
           <p class="text-gray-600 mb-4">Test and improve your reaction speed by clicking on targets as they appear.</p>
@@ -198,7 +219,8 @@
         </a>
 
         <!-- Sequence Recall -->
-        <a href="games/sequence.html" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition transform hover:-translate-y-1" data-aos="fade-up" data-aos-delay="300">
+        <a href="games/sequence.html" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition transform hover:-translate-y-1" data-aos="fade-up" data-aos-delay="300"
+           onmouseover="window.voiceUtility && window.voiceUtility.speak('Sequence Recall Game. Remember and repeat sequences of colors.', true)">
           <div class="text-4xl mb-4">🎵</div>
           <h3 class="text-2xl font-bold mb-2 text-purple-600">Sequence Recall</h3>
           <p class="text-gray-600 mb-4">Remember and repeat sequences of colors to enhance working memory.</p>

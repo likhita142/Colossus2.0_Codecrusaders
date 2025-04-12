@@ -7,11 +7,13 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 
-  <!-- Firebase Modules -->
+  <!-- Firebase and Voice Modules -->
   <script type="module">
     import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
     import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+    import voiceUtility from '../js/voice.js';
+    import VoiceSettings from '../js/voice-settings.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyA0cLtX3gqVDUVQNbQ8uFGtKPQZn9cjKGY",
@@ -27,14 +29,45 @@
     const auth = getAuth();
     const db = getDatabase(app);
 
+    // Initialize voice settings UI
+    const voiceSettings = new VoiceSettings();
+
+    // Make voice utility available globally
+    window.voiceUtility = voiceUtility;
+
     let currentUID = null;
     let chart;
+    let voiceGuideActive = true; // Voice guide is active by default
 
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
       if (user) {
         currentUID = user.uid;
+
+        // Get user data to personalize welcome message
+        try {
+          const userRef = ref(db, `users/${user.uid}`);
+          const snapshot = await get(userRef);
+          const userData = snapshot.exists() ? snapshot.val() : {};
+          const userName = userData.name || 'there';
+
+          // Welcome message with voice
+          setTimeout(() => {
+            voiceUtility.speak(`Welcome to your progress tracker, ${userName}. Here you can see how you're improving in each game. I'll guide you through using this page.`);
+
+            // After a short delay, provide instructions
+            setTimeout(() => {
+              if (voiceGuideActive) {
+                voiceUtility.speak(`Click on any game button to see your progress chart for that game. I'm showing your Memory Match progress by default.`);
+              }
+            }, 6000);
+          }, 1000);
+        } catch (error) {
+          console.error('Error getting user data:', error);
+        }
+
         showChart('memoryScores'); // Load default chart
       } else {
+        voiceUtility.speak("You must be logged in to view this page.");
         alert("You must be logged in to view this page.");
         window.location.href = "../index.html";
       }
@@ -47,7 +80,9 @@
       const snapshot = await get(userRef);
 
       if (!snapshot.exists()) {
-        alert("No progress data found. Play a game first!");
+        const message = "No progress data found. Play a game first!";
+        if (voiceGuideActive) voiceUtility.speak(message);
+        alert(message);
         return;
       }
 
@@ -55,8 +90,16 @@
       const rawData = data[type];
 
       if (!Array.isArray(rawData) || rawData.length === 0) {
-        alert(`No data found for ${type}. Play that game first!`);
+        const message = `No data found for ${getGameName(type)}. Play that game first!`;
+        if (voiceGuideActive) voiceUtility.speak(message);
+        alert(message);
         return;
+      }
+
+      // Announce the chart change with voice
+      if (voiceGuideActive) {
+        const gameName = getGameName(type);
+        voiceUtility.speak(`Showing your ${gameName} progress.`);
       }
 
       const numericData = rawData.map(Number);
@@ -112,6 +155,14 @@
       if (chart) chart.destroy();
       const ctx = document.getElementById('progressChart').getContext('2d');
       chart = new Chart(ctx, config);
+
+      // Provide voice analysis of progress if voice guide is active
+      if (voiceGuideActive && numericData.length > 1) {
+        setTimeout(() => {
+          const analysis = analyzeProgress(numericData, type);
+          voiceUtility.speak(analysis);
+        }, 1500);
+      }
     }
 
     // Logout function
@@ -125,31 +176,243 @@
       }
     }
 
-    // Expose showChart globally for button click access
+    // Helper function to get friendly game name
+    function getGameName(type) {
+      const gameNames = {
+        memoryScores: "Memory Match",
+        reactionTimes: "Reaction Tester",
+        sequenceRecall: "Sequence Recaller"
+      };
+      return gameNames[type] || type;
+    }
+
+    // Function to analyze progress and provide voice feedback
+    function analyzeProgress(data, type) {
+      // For reaction times, lower is better
+      const isReactionTime = type === 'reactionTimes';
+
+      // Get first and last values
+      const first = data[0];
+      const last = data[data.length - 1];
+
+      // Calculate improvement
+      let improved = isReactionTime ? last < first : last > first;
+      let percentChange = 0;
+
+      if (isReactionTime) {
+        percentChange = first > 0 ? ((first - last) / first) * 100 : 0;
+      } else {
+        percentChange = first > 0 ? ((last - first) / first) * 100 : 0;
+      }
+
+      // Round to 1 decimal place
+      percentChange = Math.round(percentChange * 10) / 10;
+
+      // Generate analysis message
+      let message = '';
+
+      if (data.length === 1) {
+        return `You've played ${getGameName(type)} once. Keep playing to track your progress!`;
+      }
+
+      if (improved && percentChange > 0) {
+        if (isReactionTime) {
+          message = `Great job! Your reaction time has improved by ${percentChange}% since you started.`;
+        } else {
+          message = `Great job! Your ${getGameName(type)} score has improved by ${percentChange}% since you started.`;
+        }
+
+        if (percentChange > 20) {
+          message += " That's impressive progress!";
+        }
+      } else {
+        if (isReactionTime) {
+          message = `Your reaction time is currently ${Math.abs(percentChange)}% slower than when you started.`;
+        } else {
+          message = `Your ${getGameName(type)} score is currently ${Math.abs(percentChange)}% lower than when you started.`;
+        }
+        message += " Keep practicing to improve!";
+      }
+
+      // Add trend analysis
+      const trend = analyzeTrend(data, isReactionTime);
+      message += " " + trend;
+
+      return message;
+    }
+
+    // Function to analyze the trend in the data
+    function analyzeTrend(data, lowerIsBetter = false) {
+      if (data.length < 3) return "";
+
+      // Look at the last 3 attempts to analyze recent trend
+      const recent = data.slice(-3);
+
+      if (lowerIsBetter) {
+        // For reaction times (lower is better)
+        if (recent[2] < recent[1] && recent[1] < recent[0]) {
+          return "Your recent attempts show consistent improvement. Keep it up!";
+        } else if (recent[2] > recent[1] && recent[1] > recent[0]) {
+          return "Your recent attempts show a declining trend. Try to focus more on your timing.";
+        }
+      } else {
+        // For scores (higher is better)
+        if (recent[2] > recent[1] && recent[1] > recent[0]) {
+          return "Your recent attempts show consistent improvement. Keep it up!";
+        } else if (recent[2] < recent[1] && recent[1] < recent[0]) {
+          return "Your recent attempts show a declining trend. Don't worry, practice will help you improve.";
+        }
+      }
+
+      return "Your recent performance has been variable. Consistency will come with practice.";
+    }
+
+    // Toggle voice guide function
+    window.toggleVoiceGuide = function() {
+      voiceGuideActive = !voiceGuideActive;
+      const guideButton = document.getElementById('voiceGuideButton');
+
+      if (voiceGuideActive) {
+        voiceUtility.speak("Voice guide activated. I'll provide feedback on your progress.");
+        guideButton.textContent = "Disable Voice Guide";
+        guideButton.classList.remove("bg-gray-500");
+        guideButton.classList.add("bg-blue-500");
+      } else {
+        voiceUtility.speak("Voice guide deactivated.");
+        guideButton.textContent = "Enable Voice Guide";
+        guideButton.classList.remove("bg-blue-500");
+        guideButton.classList.add("bg-gray-500");
+      }
+    };
+
+    // Expose functions globally for button click access
     window.showChart = showChart;
+    window.getGameName = getGameName;
   </script>
 
   <style>
     body {
       font-family: 'DM Sans', sans-serif;
     }
+
+    .animate-pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
   </style>
+
+  <script>
+    // Override the speak method to show the voice indicator
+    document.addEventListener('DOMContentLoaded', function() {
+      // Wait for voiceUtility to be available
+      const checkVoiceUtility = setInterval(() => {
+        if (window.voiceUtility) {
+          clearInterval(checkVoiceUtility);
+
+          // Store the original speak method
+          const originalSpeak = window.voiceUtility.speak;
+
+          // Override the speak method
+          window.voiceUtility.speak = function(text, interrupt = true) {
+            // Show the voice indicator
+            const indicator = document.getElementById('voiceIndicator');
+            const textElement = document.getElementById('voiceText');
+
+            if (indicator && textElement) {
+              textElement.textContent = text;
+              indicator.classList.remove('hidden');
+
+              // Call the original speak method
+              const promise = originalSpeak.call(window.voiceUtility, text, interrupt);
+
+              // Hide the indicator when speech is done
+              promise.then(() => {
+                setTimeout(() => {
+                  indicator.classList.add('hidden');
+                }, 500);
+              }).catch(() => {
+                indicator.classList.add('hidden');
+              });
+
+              return promise;
+            } else {
+              // If indicator elements don't exist, just call the original method
+              return originalSpeak.call(window.voiceUtility, text, interrupt);
+            }
+          };
+        }
+      }, 100);
+    });
+  </script>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-800">
 
   <div class="max-w-4xl mx-auto p-6 relative">
-    <!-- Logout button -->
-    <div class="absolute top-4 right-4">
-      <button onclick="logout()" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Logout</button>
+    <!-- Header buttons -->
+    <div class="flex justify-between items-center mb-6">
+      <!-- Voice Guide Toggle -->
+      <button id="voiceGuideButton" onclick="toggleVoiceGuide()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.465a5 5 0 001.06-7.072m-2.829 9.9a9 9 0 010-12.728" />
+        </svg>
+        Disable Voice Guide
+      </button>
+
+      <!-- Logout button -->
+      <button onclick="logout()" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+        </svg>
+        Logout
+      </button>
     </div>
 
     <h1 class="text-4xl font-bold mb-4 text-center">📈 Progress Tracker</h1>
     <p class="text-center mb-6 text-lg">Track your improvement over time for each MindFlex game.</p>
 
+    <!-- Voice assistant indicator -->
+    <div id="voiceIndicator" class="fixed bottom-4 left-4 bg-purple-100 text-purple-800 p-3 rounded-lg shadow-md max-w-md hidden">
+      <div class="flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+        </svg>
+        <span id="voiceText">Voice assistant is speaking...</span>
+      </div>
+    </div>
+
     <div class="flex justify-center gap-4 mb-6 flex-wrap">
-      <button onclick="showChart('memoryScores')" class="tab-btn px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">Memory Match</button>
-      <button onclick="showChart('reactionTimes')" class="tab-btn px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">Reaction Tester</button>
-      <button onclick="showChart('sequenceRecall')" class="tab-btn px-4 py-2 bg-purple-700 text-white rounded hover:bg-purple-800">Sequence Recaller</button>
+      <button onclick="showChart('memoryScores')"
+              onmouseover="voiceGuideActive && voiceUtility.speak('View your Memory Match progress')"
+              class="tab-btn px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        Memory Match
+      </button>
+      <button onclick="showChart('reactionTimes')"
+              onmouseover="voiceGuideActive && voiceUtility.speak('View your Reaction Tester progress')"
+              class="tab-btn px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+        Reaction Tester
+      </button>
+      <button onclick="showChart('sequenceRecall')"
+              onmouseover="voiceGuideActive && voiceUtility.speak('View your Sequence Recaller progress')"
+              class="tab-btn px-4 py-2 bg-purple-700 text-white rounded hover:bg-purple-800 flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+        Sequence Recaller
+      </button>
     </div>
 
     <div class="bg-white p-6 rounded-xl shadow-md">

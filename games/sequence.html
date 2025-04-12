@@ -33,6 +33,8 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
     import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js";
+    import voiceUtility from '../js/voice.js';
+    import VoiceSettings from '../js/voice-settings.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyA0cLtX3gqVDUVQNbQ8uFGtKPQZn9cjKGY",
@@ -47,6 +49,12 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth();
     const db = getDatabase(app);
+
+    // Initialize voice settings UI
+    const voiceSettings = new VoiceSettings();
+
+    // Make voice utility available globally
+    window.voiceUtility = voiceUtility;
 
     const colors = ["green", "red", "yellow", "blue"];
     let gameSequence = [];
@@ -82,6 +90,10 @@
       userSequence = [];
       level++;
       levelText.textContent = "Level: " + level;
+
+      // Announce new level with voice
+      voiceUtility.speak(`Level ${level}. Watch the sequence.`);
+
       playSequence();
     }
 
@@ -195,6 +207,10 @@
       if (userSequence[index] !== gameSequence[index]) {
         console.log('Wrong color! Game over at level:', level);
         levelText.textContent = "Game Over! You reached level " + level;
+
+        // Announce game over with voice
+        voiceUtility.speak(`Game over! You reached level ${level}. Try again!`);
+
         saveLevelToFirebase(level);
 
         gameSequence = [];
@@ -205,6 +221,10 @@
 
       if (userSequence.length === gameSequence.length) {
         console.log('Level completed! Moving to next level');
+
+        // Announce level completion with voice
+        voiceUtility.speak(`Great job! Level ${level} complete.`);
+
         setTimeout(nextLevel, 1000);
       }
     }
@@ -229,6 +249,10 @@
       console.log('Starting new game');
       gameSequence = [];
       level = 0;
+
+      // Announce game start with voice
+      voiceUtility.speak('Starting new game. Watch the sequence and repeat it.');
+
       nextLevel();
     });
   </script>

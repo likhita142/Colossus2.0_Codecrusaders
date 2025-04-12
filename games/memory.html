@@ -68,7 +68,17 @@
     </main>
   </div>
 
-  <script>
+  <script type="module">
+    // Import voice utility
+    import voiceUtility from '../js/voice.js';
+    import VoiceSettings from '../js/voice-settings.js';
+
+    // Initialize voice settings UI
+    const voiceSettings = new VoiceSettings();
+
+    // Make voice utility available globally
+    window.voiceUtility = voiceUtility;
+
     // Preload and configure sound effects
     const correctSound = new Audio("https://cdn.jsdelivr.net/gh/terkelg/sfx/click1.mp3");
     const mismatchSound = new Audio("https://cdn.jsdelivr.net/gh/terkelg/sfx/deny.mp3");
@@ -116,6 +126,9 @@
       document.getElementById('moves').textContent = "Moves: 0";
       document.getElementById('level').textContent = "Level: " + level;
       document.getElementById('timer').textContent = "Time: 0s";
+
+      // Announce level start with voice
+      voiceUtility.speak(`Level ${level} started. Find ${level + 1} matching pairs.`);
 
       shuffled.forEach((emoji, index) => {
         const card = document.createElement('div');
@@ -168,12 +181,18 @@
           matchedPairs++;
           flippedCards = [];
 
+          // Announce match with voice
+          voiceUtility.speak(`Match found! ${matchedPairs} of ${level + 1} pairs matched.`, false);
+
           // Check if level is complete
           const totalPairs = level + 1;
           if (matchedPairs === totalPairs) {
             stopTimer();
             levelUpSound.currentTime = 0;
             levelUpSound.play();
+
+            // Announce level completion with voice
+            voiceUtility.speak(`Congratulations! Level ${level} completed in ${time} seconds with ${moves} moves.`);
 
             // Save stats
             let stats = JSON.parse(localStorage.getItem('memoryLevels') || '[]');
@@ -208,6 +227,9 @@
           // No match
           mismatchSound.currentTime = 0;
           mismatchSound.play();
+
+          // Announce mismatch with voice
+          voiceUtility.speak('No match. Try again.', false);
 
           // Flip cards back after delay
           setTimeout(() => {
