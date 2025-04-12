@@ -11,10 +11,24 @@
     <!-- CXGenie Widget -->
     <script src="https://widget.cxgenie.ai/widget.js" data-aid="439f8d69-b945-4876-873c-6435f08dd4cc" data-lang="en"></script>
 
-
     <!-- AOS (Animate on Scroll) -->
     <link href="https://unpkg.com/aos@2.3.4/dist/aos.css" rel="stylesheet" />
     <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+
+    <!-- GSAP Animation Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+
+    <!-- Particles.js for Background Effects -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
 
     <!-- Firebase -->
     <script type="module">
@@ -130,147 +144,408 @@
             colors: {
               lavender: '#C3B1E1',
               softpurple: '#A78BFA',
+              primary: {
+                50: '#f5f3ff',
+                100: '#ede9fe',
+                200: '#ddd6fe',
+                300: '#c4b5fd',
+                400: '#a78bfa',
+                500: '#8b5cf6',
+                600: '#7c3aed',
+                700: '#6d28d9',
+                800: '#5b21b6',
+                900: '#4c1d95',
+                950: '#2e1065',
+              },
+              secondary: {
+                50: '#f0fdfa',
+                100: '#ccfbf1',
+                200: '#99f6e4',
+                300: '#5eead4',
+                400: '#2dd4bf',
+                500: '#14b8a6',
+                600: '#0d9488',
+                700: '#0f766e',
+                800: '#115e59',
+                900: '#134e4a',
+                950: '#042f2e',
+              },
+              accent: {
+                50: '#fff1f2',
+                100: '#ffe4e6',
+                200: '#fecdd3',
+                300: '#fda4af',
+                400: '#fb7185',
+                500: '#f43f5e',
+                600: '#e11d48',
+                700: '#be123c',
+                800: '#9f1239',
+                900: '#881337',
+                950: '#4c0519',
+              },
             },
             fontFamily: {
-              display: ['Poppins', 'sans-serif'],
+              sans: ['Poppins', 'sans-serif'],
+              display: ['Montserrat', 'sans-serif'],
+            },
+            boxShadow: {
+              'soft': '0 4px 20px rgba(0, 0, 0, 0.05)',
+              'glow': '0 0 15px rgba(139, 92, 246, 0.5)',
+              'neon': '0 0 10px rgba(139, 92, 246, 0.8), 0 0 20px rgba(139, 92, 246, 0.6), 0 0 30px rgba(139, 92, 246, 0.4)',
+            },
+            animation: {
+              'float': 'float 6s ease-in-out infinite',
+              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'bounce-slow': 'bounce 3s infinite',
+              'spin-slow': 'spin 8s linear infinite',
+            },
+            keyframes: {
+              float: {
+                '0%, 100%': { transform: 'translateY(0)' },
+                '50%': { transform: 'translateY(-10px)' },
+              },
+            },
+            backgroundImage: {
+              'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+              'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
             },
           },
         },
       };
     </script>
   </head>
-  <body class="bg-lavender text-gray-800 font-display">
+  <body class="bg-gradient-to-br from-primary-100 via-lavender to-primary-200 text-gray-800 font-sans min-h-screen overflow-x-hidden">
+    <!-- Particles Background -->
+    <div id="particles-js" class="fixed inset-0 z-0 opacity-50"></div>
 
     <!-- Navbar -->
-    <nav class="flex justify-between items-center p-6 bg-white shadow z-10 relative">
-      <h1 class="text-2xl font-bold text-purple-600">🧠 MindFlex</h1>
-      <div class="nav-links space-x-4">
-        <a href="#about" class="hover:text-purple-600 transition">About</a>
-        <a href="#games" class="hover:text-purple-600 transition">Games</a>
-        <a href="login.html" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">Login</a>
+    <nav class="sticky top-0 flex justify-between items-center p-4 md:p-6 bg-white/90 backdrop-blur-md shadow-soft z-50 relative">
+      <div class="flex items-center">
+        <div class="mr-3 text-3xl animate-float">🧠</div>
+        <h1 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary-600 to-accent-500 text-transparent bg-clip-text">MindFlex</h1>
+      </div>
+      <div class="nav-links space-x-3 md:space-x-4 flex items-center">
+        <a href="#about" class="hover:text-primary-600 transition-all duration-300 relative group">
+          About
+          <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary-500 transition-all duration-300 group-hover:w-full"></span>
+        </a>
+        <a href="#games" class="hover:text-primary-600 transition-all duration-300 relative group">
+          Games
+          <span class="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary-500 transition-all duration-300 group-hover:w-full"></span>
+        </a>
+        <a href="login.html" class="ml-2 px-4 py-2 bg-primary-600 text-white rounded-lg shadow-glow hover:shadow-neon hover:bg-primary-500 transform hover:-translate-y-1 transition-all duration-300 flex items-center">
+          <i class="fas fa-sign-in-alt mr-2"></i> Login
+        </a>
       </div>
     </nav>
 
     <!-- Hero Section -->
-    <section class="hero-section min-h-screen flex flex-col justify-center items-center bg-gradient-to-br from-lavender to-white text-center px-6 relative z-10">
-      <h1 class="text-6xl md:text-7xl font-bold text-purple-600 mb-6" data-aos="fade-down">
-        Welcome to MindFlex
-      </h1>
-      <p class="text-lg md:text-xl text-gray-700 max-w-2xl mb-8" data-aos="fade-up" data-aos-delay="200">
-        A cognitive rehab game suite to train memory, focus & reflexes — made for stroke survivors and seniors.
-      </p>
-      <div class="button-container flex flex-wrap justify-center gap-4">
-        <a href="#games" class="bg-purple-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-purple-700 transition" data-aos="zoom-in" data-aos-delay="400">
-          🧠 Explore Games
-        </a>
-        <!-- Dashboard link will be added here for doctors -->
+    <section class="hero-section min-h-screen flex flex-col justify-center items-center text-center px-6 relative z-10">
+      <!-- Decorative Elements -->
+      <div class="absolute top-20 left-10 w-20 h-20 bg-primary-300 rounded-full opacity-20 animate-pulse-slow"></div>
+      <div class="absolute bottom-20 right-10 w-32 h-32 bg-secondary-300 rounded-full opacity-20 animate-float"></div>
+      <div class="absolute top-1/3 right-1/4 w-16 h-16 bg-accent-300 rounded-full opacity-20 animate-spin-slow"></div>
+
+      <!-- Main Content -->
+      <div class="max-w-4xl mx-auto">
+        <h1 class="text-5xl md:text-7xl font-bold mb-6 font-display" data-aos="fade-down">
+          <span class="bg-gradient-to-r from-primary-600 via-accent-500 to-secondary-500 text-transparent bg-clip-text">Welcome to</span>
+          <div class="mt-2 relative inline-block">
+            <span class="relative z-10 bg-gradient-to-r from-primary-700 to-primary-500 text-transparent bg-clip-text">MindFlex</span>
+            <span class="absolute -bottom-2 left-0 w-full h-4 bg-accent-200 opacity-50 -z-10 transform -rotate-1"></span>
+          </div>
+        </h1>
+
+        <p class="text-lg md:text-xl text-gray-700 max-w-2xl mx-auto mb-10" data-aos="fade-up" data-aos-delay="200">
+          A cognitive rehabilitation platform with engaging games to train
+          <span class="font-semibold text-primary-600">memory</span>,
+          <span class="font-semibold text-secondary-600">focus</span> &
+          <span class="font-semibold text-accent-600">reflexes</span>
+          — designed specifically for stroke survivors and seniors.
+        </p>
+
+        <div class="button-container flex flex-wrap justify-center gap-4 mt-6">
+          <a href="#games" class="group bg-primary-600 text-white px-8 py-4 rounded-xl font-semibold shadow-glow hover:shadow-neon hover:bg-primary-500 transform hover:-translate-y-1 transition-all duration-300" data-aos="zoom-in" data-aos-delay="400">
+            <span class="flex items-center">
+              <span>🧠 Explore Games</span>
+              <i class="fas fa-gamepad ml-2 group-hover:translate-x-1 transition-transform"></i>
+            </span>
+          </a>
+          <a href="login.html" class="group bg-white text-primary-600 px-8 py-4 rounded-xl font-semibold border-2 border-primary-300 hover:border-primary-500 hover:bg-primary-50 transform hover:-translate-y-1 transition-all duration-300" data-aos="zoom-in" data-aos-delay="500">
+            <span class="flex items-center">
+              <span>Login</span>
+              <i class="fas fa-sign-in-alt ml-2 group-hover:translate-x-1 transition-transform"></i>
+            </span>
+          </a>
+        </div>
+
+        <!-- Scroll Indicator -->
+        <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce-slow" data-aos="fade-up" data-aos-delay="800">
+          <a href="#about" class="text-primary-500 hover:text-primary-700 transition-colors">
+            <i class="fas fa-chevron-down text-2xl"></i>
+          </a>
+        </div>
       </div>
     </section>
 
     <!-- About Section -->
-    <section id="about" class="py-20 px-6 md:px-20 bg-white text-center" data-aos="fade-up">
-      <h2 class="text-4xl font-bold text-purple-600 mb-6">What is MindFlex?</h2>
-      <p class="text-lg max-w-3xl mx-auto mb-10">
-        MindFlex is a browser-based cognitive training platform featuring memory and reflex games designed to support cognitive rehabilitation for stroke survivors and the elderly.
-      </p>
+    <section id="about" class="py-24 px-6 md:px-20 bg-white relative overflow-hidden" data-aos="fade-up">
+      <!-- Decorative background elements -->
+      <div class="absolute -top-20 -right-20 w-64 h-64 bg-primary-100 rounded-full opacity-50"></div>
+      <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-secondary-100 rounded-full opacity-40"></div>
 
-      <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-        <div class="bg-lavender/30 p-6 rounded-xl" data-aos="fade-up" data-aos-delay="100">
-          <div class="text-3xl mb-4">🧩</div>
-          <h3 class="text-xl font-semibold mb-2">Engaging Games</h3>
-          <p>Fun, interactive games designed specifically for cognitive rehabilitation.</p>
+      <div class="relative z-10 max-w-6xl mx-auto">
+        <div class="text-center mb-16">
+          <h2 class="inline-block text-4xl md:text-5xl font-bold font-display mb-6 relative">
+            <span class="bg-gradient-to-r from-primary-600 to-primary-700 text-transparent bg-clip-text">What is MindFlex?</span>
+            <span class="absolute -bottom-2 left-0 w-full h-1 bg-accent-300 transform -rotate-1"></span>
+          </h2>
+          <p class="text-lg md:text-xl max-w-3xl mx-auto mb-4 text-gray-700">
+            MindFlex is a browser-based cognitive training platform featuring engaging games designed to support cognitive rehabilitation for stroke survivors and the elderly.
+          </p>
         </div>
 
-        <div class="bg-lavender/30 p-6 rounded-xl" data-aos="fade-up" data-aos-delay="200">
-          <div class="text-3xl mb-4">📊</div>
-          <h3 class="text-xl font-semibold mb-2">Progress Tracking</h3>
-          <p>Monitor improvement over time with detailed performance metrics.</p>
-        </div>
+        <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div class="bg-gradient-to-br from-white to-primary-50 p-8 rounded-2xl shadow-soft hover:shadow-glow transition-all duration-300 transform hover:-translate-y-2" data-aos="fade-up" data-aos-delay="100">
+            <div class="text-4xl mb-4 bg-primary-100 w-16 h-16 rounded-xl flex items-center justify-center text-primary-600 mx-auto">
+              <i class="fas fa-puzzle-piece"></i>
+            </div>
+            <h3 class="text-xl font-semibold mb-3 text-primary-700">Engaging Games</h3>
+            <p class="text-gray-600">Fun, interactive games specifically designed for cognitive rehabilitation and brain training.</p>
+          </div>
 
-        <div class="bg-lavender/30 p-6 rounded-xl" data-aos="fade-up" data-aos-delay="300">
-          <div class="text-3xl mb-4">👨‍⚕️</div>
-          <h3 class="text-xl font-semibold mb-2">Doctor Dashboard</h3>
-          <p>Healthcare providers can monitor patient progress and customize training.</p>
+          <div class="bg-gradient-to-br from-white to-secondary-50 p-8 rounded-2xl shadow-soft hover:shadow-glow transition-all duration-300 transform hover:-translate-y-2" data-aos="fade-up" data-aos-delay="200">
+            <div class="text-4xl mb-4 bg-secondary-100 w-16 h-16 rounded-xl flex items-center justify-center text-secondary-600 mx-auto">
+              <i class="fas fa-chart-line"></i>
+            </div>
+            <h3 class="text-xl font-semibold mb-3 text-secondary-700">Progress Tracking</h3>
+            <p class="text-gray-600">Monitor improvement over time with detailed performance metrics and visual progress charts.</p>
+          </div>
+
+          <div class="bg-gradient-to-br from-white to-accent-50 p-8 rounded-2xl shadow-soft hover:shadow-glow transition-all duration-300 transform hover:-translate-y-2" data-aos="fade-up" data-aos-delay="300">
+            <div class="text-4xl mb-4 bg-accent-100 w-16 h-16 rounded-xl flex items-center justify-center text-accent-600 mx-auto">
+              <i class="fas fa-user-md"></i>
+            </div>
+            <h3 class="text-xl font-semibold mb-3 text-accent-700">Doctor Dashboard</h3>
+            <p class="text-gray-600">Healthcare providers can monitor patient progress and generate detailed rehabilitation reports.</p>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- Games Section -->
-    <section id="games" class="py-20 px-6 md:px-20 bg-lavender/30">
-      <h2 class="text-4xl font-bold text-purple-600 mb-10 text-center" data-aos="fade-up">Games Collection</h2>
+    <section id="games" class="py-24 px-6 md:px-20 bg-gradient-to-br from-primary-50 to-primary-100 relative overflow-hidden">
+      <!-- Decorative elements -->
+      <div class="absolute top-0 left-0 w-full h-20 bg-gradient-to-b from-white to-transparent"></div>
+      <div class="absolute -top-10 -left-10 w-40 h-40 bg-primary-200 rounded-full opacity-30 animate-spin-slow"></div>
+      <div class="absolute bottom-10 right-10 w-60 h-60 bg-secondary-200 rounded-full opacity-20 animate-pulse-slow"></div>
 
-      <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-        <!-- Memory Match -->
-        <a href="games/memory.html" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition transform hover:-translate-y-1" data-aos="fade-up" data-aos-delay="100"
-           onmouseover="window.voiceUtility && window.voiceUtility.speak('Memory Match Game. Flip and match emoji cards to train your short-term memory.', true)">
-          <div class="text-4xl mb-4">🃏</div>
-          <h3 class="text-2xl font-bold mb-2 text-purple-600">Memory Match</h3>
-          <p class="text-gray-600 mb-4">Flip and match emoji cards to train your short-term memory and concentration.</p>
-          <div class="text-purple-600 font-medium">Play Now →</div>
-        </a>
+      <div class="relative z-10 max-w-6xl mx-auto">
+        <div class="text-center mb-16">
+          <h2 class="inline-block text-4xl md:text-5xl font-bold font-display mb-6 relative" data-aos="fade-up">
+            <span class="bg-gradient-to-r from-primary-600 to-secondary-600 text-transparent bg-clip-text">Games Collection</span>
+            <span class="absolute -bottom-2 left-0 w-full h-1 bg-accent-300 transform -rotate-1"></span>
+          </h2>
+          <p class="text-lg max-w-3xl mx-auto text-gray-700" data-aos="fade-up" data-aos-delay="100">
+            Our scientifically designed games target different cognitive functions to provide comprehensive rehabilitation.
+          </p>
+        </div>
 
-        <!-- Reaction Time -->
-        <a href="games/reaction.html" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition transform hover:-translate-y-1" data-aos="fade-up" data-aos-delay="200"
-           onmouseover="window.voiceUtility && window.voiceUtility.speak('Reaction Time Game. Test and improve your reaction speed.', true)">
-          <div class="text-4xl mb-4">⚡</div>
-          <h3 class="text-2xl font-bold mb-2 text-purple-600">Reaction Time</h3>
-          <p class="text-gray-600 mb-4">Test and improve your reaction speed by clicking on targets as they appear.</p>
-          <div class="text-purple-600 font-medium">Play Now →</div>
-        </a>
+        <div class="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <!-- Memory Match -->
+          <a href="games/memory.html" class="group bg-white p-8 rounded-2xl shadow-soft hover:shadow-glow transition-all duration-500 transform hover:-translate-y-2"
+             data-aos="fade-up" data-aos-delay="100"
+             onmouseover="window.voiceUtility && window.voiceUtility.speak('Memory Match Game. Flip and match emoji cards to train your short-term memory.', true)">
+            <div class="text-5xl mb-6 bg-primary-100 w-20 h-20 rounded-2xl flex items-center justify-center text-primary-600 mx-auto group-hover:scale-110 transition-transform duration-300">
+              <i class="fas fa-clone"></i>
+            </div>
+            <h3 class="text-2xl font-bold mb-3 text-primary-600 group-hover:text-primary-700 transition-colors">Memory Match</h3>
+            <p class="text-gray-600 mb-6">Flip and match emoji cards to train your short-term memory and concentration.</p>
+            <div class="text-primary-600 font-medium flex items-center justify-center group-hover:text-primary-700">
+              <span>Play Now</span>
+              <i class="fas fa-arrow-right ml-2 transform group-hover:translate-x-1 transition-transform"></i>
+            </div>
+          </a>
 
-        <!-- Sequence Recall -->
-        <a href="games/sequence.html" class="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition transform hover:-translate-y-1" data-aos="fade-up" data-aos-delay="300"
-           onmouseover="window.voiceUtility && window.voiceUtility.speak('Sequence Recall Game. Remember and repeat sequences of colors.', true)">
-          <div class="text-4xl mb-4">🎵</div>
-          <h3 class="text-2xl font-bold mb-2 text-purple-600">Sequence Recall</h3>
-          <p class="text-gray-600 mb-4">Remember and repeat sequences of colors to enhance working memory.</p>
-          <div class="text-purple-600 font-medium">Play Now →</div>
-        </a>
+          <!-- Reaction Time -->
+          <a href="games/reaction.html" class="group bg-white p-8 rounded-2xl shadow-soft hover:shadow-glow transition-all duration-500 transform hover:-translate-y-2"
+             data-aos="fade-up" data-aos-delay="200"
+             onmouseover="window.voiceUtility && window.voiceUtility.speak('Reaction Time Game. Test and improve your reaction speed.', true)">
+            <div class="text-5xl mb-6 bg-secondary-100 w-20 h-20 rounded-2xl flex items-center justify-center text-secondary-600 mx-auto group-hover:scale-110 transition-transform duration-300">
+              <i class="fas fa-bolt"></i>
+            </div>
+            <h3 class="text-2xl font-bold mb-3 text-secondary-600 group-hover:text-secondary-700 transition-colors">Reaction Time</h3>
+            <p class="text-gray-600 mb-6">Test and improve your reaction speed by clicking on targets as they appear.</p>
+            <div class="text-secondary-600 font-medium flex items-center justify-center group-hover:text-secondary-700">
+              <span>Play Now</span>
+              <i class="fas fa-arrow-right ml-2 transform group-hover:translate-x-1 transition-transform"></i>
+            </div>
+          </a>
+
+          <!-- Sequence Recall -->
+          <a href="games/sequence.html" class="group bg-white p-8 rounded-2xl shadow-soft hover:shadow-glow transition-all duration-500 transform hover:-translate-y-2"
+             data-aos="fade-up" data-aos-delay="300"
+             onmouseover="window.voiceUtility && window.voiceUtility.speak('Sequence Recall Game. Remember and repeat sequences of colors.', true)">
+            <div class="text-5xl mb-6 bg-accent-100 w-20 h-20 rounded-2xl flex items-center justify-center text-accent-600 mx-auto group-hover:scale-110 transition-transform duration-300">
+              <i class="fas fa-list-ol"></i>
+            </div>
+            <h3 class="text-2xl font-bold mb-3 text-accent-600 group-hover:text-accent-700 transition-colors">Sequence Recall</h3>
+            <p class="text-gray-600 mb-6">Remember and repeat sequences of colors to enhance working memory.</p>
+            <div class="text-accent-600 font-medium flex items-center justify-center group-hover:text-accent-700">
+              <span>Play Now</span>
+              <i class="fas fa-arrow-right ml-2 transform group-hover:translate-x-1 transition-transform"></i>
+            </div>
+          </a>
+        </div>
       </div>
+    </section>
 
-      <div class="text-center mt-12">
-        <a href="games/tracker.html" class="inline-block bg-white text-purple-600 border border-purple-600 px-6 py-3 rounded-lg hover:bg-purple-50 transition" data-aos="fade-up">
+    <!-- Progress Tracker Section -->
+    <section class="py-16 px-6 md:px-20 bg-white text-center">
+      <div class="max-w-4xl mx-auto">
+        <h2 class="text-3xl font-bold text-primary-600 mb-6" data-aos="fade-up">Track Your Progress</h2>
+        <p class="text-lg text-gray-700 mb-8" data-aos="fade-up" data-aos-delay="100">Monitor your cognitive improvement over time with our detailed progress tracker.</p>
+        <a href="games/tracker.html" class="inline-block bg-gradient-to-r from-primary-600 to-primary-700 text-white px-8 py-4 rounded-xl shadow-glow hover:shadow-neon hover:from-primary-500 hover:to-primary-600 transform hover:-translate-y-1 transition-all duration-300" data-aos="fade-up" data-aos-delay="200">
           📊 View Your Progress
         </a>
       </div>
     </section>
 
     <!-- Footer -->
-    <footer class="bg-white py-8 text-center">
-      <div class="container mx-auto px-4">
-        <h2 class="text-2xl font-bold text-purple-600 mb-4">MindFlex</h2>
-        <p class="text-gray-600 mb-6">Cognitive rehabilitation through engaging gameplay</p>
-        <div class="flex justify-center space-x-6 mb-6">
-          <a href="#" class="text-gray-600 hover:text-purple-600">
-            <span class="sr-only">Facebook</span>
-            <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill-rule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clip-rule="evenodd" />
-            </svg>
-          </a>
-          <a href="#" class="text-gray-600 hover:text-purple-600">
-            <span class="sr-only">Twitter</span>
-            <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
-            </svg>
-          </a>
-          <a href="#" class="text-gray-600 hover:text-purple-600">
-            <span class="sr-only">GitHub</span>
-            <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
-            </svg>
-          </a>
+    <footer class="bg-gradient-to-br from-primary-800 to-primary-900 text-white py-16 relative overflow-hidden">
+      <!-- Decorative elements -->
+      <div class="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-white to-transparent opacity-10"></div>
+      <div class="absolute -top-20 -right-20 w-64 h-64 bg-primary-700 rounded-full opacity-20"></div>
+      <div class="absolute -bottom-32 -left-32 w-96 h-96 bg-primary-700 rounded-full opacity-10"></div>
+
+      <div class="container mx-auto px-6 relative z-10">
+        <div class="grid md:grid-cols-3 gap-12 mb-12">
+          <!-- Logo and tagline -->
+          <div class="text-center md:text-left">
+            <div class="flex items-center justify-center md:justify-start mb-4">
+              <div class="text-3xl mr-2 animate-float">🧠</div>
+              <h2 class="text-2xl font-bold bg-gradient-to-r from-white to-primary-200 text-transparent bg-clip-text">MindFlex</h2>
+            </div>
+            <p class="text-primary-100 mb-6">Cognitive rehabilitation through engaging gameplay</p>
+            <div class="flex justify-center md:justify-start space-x-4">
+              <a href="#" class="text-primary-200 hover:text-white transition-colors duration-300">
+                <i class="fab fa-facebook-f text-lg"></i>
+              </a>
+              <a href="#" class="text-primary-200 hover:text-white transition-colors duration-300">
+                <i class="fab fa-twitter text-lg"></i>
+              </a>
+              <a href="#" class="text-primary-200 hover:text-white transition-colors duration-300">
+                <i class="fab fa-github text-lg"></i>
+              </a>
+            </div>
+          </div>
+
+          <!-- Quick links -->
+          <div class="text-center">
+            <h3 class="text-lg font-semibold mb-4 text-white">Quick Links</h3>
+            <ul class="space-y-2">
+              <li><a href="#about" class="text-primary-200 hover:text-white transition-colors duration-300">About Us</a></li>
+              <li><a href="#games" class="text-primary-200 hover:text-white transition-colors duration-300">Games</a></li>
+              <li><a href="games/tracker.html" class="text-primary-200 hover:text-white transition-colors duration-300">Progress Tracker</a></li>
+              <li><a href="login.html" class="text-primary-200 hover:text-white transition-colors duration-300">Login</a></li>
+              <li><a href="signup.html" class="text-primary-200 hover:text-white transition-colors duration-300">Sign Up</a></li>
+            </ul>
+          </div>
+
+          <!-- Contact -->
+          <div class="text-center md:text-right">
+            <h3 class="text-lg font-semibold mb-4 text-white">Contact Us</h3>
+            <p class="text-primary-200 mb-2"><i class="fas fa-envelope mr-2"></i> support@mindflex.com</p>
+            <p class="text-primary-200 mb-2"><i class="fas fa-phone mr-2"></i> +1 (555) 123-4567</p>
+            <p class="text-primary-200"><i class="fas fa-map-marker-alt mr-2"></i> Siddaganga Institute Of Technology,Tumkur</p>
+          </div>
         </div>
-        <p class="text-sm text-gray-500">© 2025 MindFlex. All rights reserved.</p>
+
+        <div class="border-t border-primary-700 pt-6 text-center">
+          <p class="text-primary-300 text-sm">&copy; 2025 MindFlex. All rights reserved.</p>
+        </div>
       </div>
     </footer>
 
-    <!-- Initialize AOS -->
+    <!-- Initialize AOS and other animations -->
     <script>
       document.addEventListener('DOMContentLoaded', function() {
+        // Initialize AOS animations
         AOS.init({
           duration: 800,
           once: true,
+          mirror: true,
+          offset: 50
         });
+
+        // Initialize particles.js
+        particlesJS('particles-js', {
+          particles: {
+            number: { value: 80, density: { enable: true, value_area: 800 } },
+            color: { value: '#8b5cf6' },
+            shape: { type: 'circle' },
+            opacity: { value: 0.5, random: true },
+            size: { value: 3, random: true },
+            line_linked: {
+              enable: true,
+              distance: 150,
+              color: '#8b5cf6',
+              opacity: 0.2,
+              width: 1
+            },
+            move: {
+              enable: true,
+              speed: 1,
+              direction: 'none',
+              random: true,
+              out_mode: 'out'
+            }
+          },
+          interactivity: {
+            detect_on: 'canvas',
+            events: {
+              onhover: { enable: true, mode: 'grab' },
+              onclick: { enable: true, mode: 'push' },
+              resize: true
+            },
+            modes: {
+              grab: { distance: 140, line_linked: { opacity: 0.5 } },
+              push: { particles_nb: 3 }
+            }
+          },
+          retina_detect: true
+        });
+
+        // GSAP animations for enhanced elements
+        if (window.gsap) {
+          // Animate hero section elements
+          gsap.from('.hero-section h1 span', {
+            opacity: 0,
+            y: 50,
+            duration: 1,
+            stagger: 0.2,
+            ease: 'power3.out'
+          });
+
+          // Set up scroll triggers for game cards
+          gsap.utils.toArray('.group').forEach(card => {
+            gsap.set(card, { y: 20, opacity: 0 });
+
+            ScrollTrigger.create({
+              trigger: card,
+              start: 'top bottom-=100',
+              onEnter: () => {
+                gsap.to(card, {
+                  y: 0,
+                  opacity: 1,
+                  duration: 0.8,
+                  ease: 'power2.out'
+                });
+              },
+              once: true
+            });
+          });
+        }
       });
     </script>
   </body>
