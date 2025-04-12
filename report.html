@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MindFlex - Patient Report Generator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div class="max-w-4xl mx-auto p-6">
+    <h1 class="text-3xl font-bold text-center text-purple-700 mb-6">MindFlex Patient Report Generator</h1>
+
+    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+      <h2 class="text-xl font-semibold mb-4">Select Patient</h2>
+      <select id="patientSelect" class="w-full p-2 border rounded mb-4">
+        <option value="">-- Select a patient --</option>
+      </select>
+
+      <button id="generateBtn" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 disabled:bg-gray-400" disabled>
+        Generate Report
+      </button>
+    </div>
+
+    <div id="reportPreview" class="bg-white rounded-lg shadow-md p-6 hidden">
+      <div id="reportContent">
+        <div class="text-center mb-6">
+          <h2 class="text-2xl font-bold text-purple-700">MindFlex Cognitive Rehabilitation Report</h2>
+          <p id="reportDate" class="text-gray-600"></p>
+        </div>
+
+        <div class="mb-6">
+          <h3 class="text-xl font-semibold mb-2">Patient Information</h3>
+          <p><strong>Name:</strong> <span id="patientName">-</span></p>
+          <p><strong>Last Active:</strong> <span id="lastActive">-</span></p>
+          <p><strong>Account Created:</strong> <span id="accountCreated">-</span></p>
+        </div>
+
+        <div class="mb-6">
+          <h3 class="text-xl font-semibold mb-2">Progress Summary</h3>
+          <p id="progressSummary">-</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <h3 class="text-lg font-semibold mb-2">Memory Match Progress</h3>
+            <div class="h-64">
+              <canvas id="memoryChart"></canvas>
+            </div>
+            <p id="memoryAnalysis" class="mt-2 text-sm"></p>
+          </div>
+
+          <div>
+            <h3 class="text-lg font-semibold mb-2">Reaction Time Progress</h3>
+            <div class="h-64">
+              <canvas id="reactionChart"></canvas>
+            </div>
+            <p id="reactionAnalysis" class="mt-2 text-sm"></p>
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold mb-2">Sequence Recall Progress</h3>
+          <div class="h-64">
+            <canvas id="sequenceChart"></canvas>
+          </div>
+          <p id="sequenceAnalysis" class="mt-2 text-sm"></p>
+        </div>
+
+        <div class="mb-6">
+          <h3 class="text-xl font-semibold mb-2">Recommendations</h3>
+          <p id="recommendations">-</p>
+        </div>
+      </div>
+
+      <div class="flex justify-between mt-6">
+        <button id="downloadBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+          Download PDF
+        </button>
+        <a href="index.html" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+          Back to Home
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0cLtX3gqVDUVQNbQ8uFGtKPQZn9cjKGY",
+      authDomain: "mind-flex-c4117.firebaseapp.com",
+      databaseURL: "https://mind-flex-c4117-default-rtdb.firebaseio.com",
+      projectId: "mind-flex-c4117",
+      storageBucket: "mind-flex-c4117.appspot.com",
+      messagingSenderId: "828640054474",
+      appId: "1:828640054474:web:032c300466e5785bd1b833"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth();
+    const db = getDatabase(app);
+
+    // Chart objects
+    let memoryChart, reactionChart, sequenceChart;
+
+    // Wait for authentication
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Check if user is a doctor
+        const userRef = ref(db, `users/${user.uid}`);
+        const userSnapshot = await get(userRef);
+
+        if (userSnapshot.exists()) {
+          const userData = userSnapshot.val();
+          const userRole = userData.role || (userData.data && userData.data.role);
+
+          if (userRole !== "doctor") {
+            alert("Only doctors can access the report generator.");
+            window.location.href = "index.html";
+            return;
+          }
+
+          // Load patients
+          loadPatients();
+        } else {
+          alert("User data not found.");
+          window.location.href = "index.html";
+        }
+      } else {
+        // Not logged in
+        alert("Please log in to access this page.");
+        window.location.href = "login.html";
+      }
+    });
+
+    // Load patients
+    async function loadPatients() {
+      try {
+        const usersRef = ref(db, "users");
+        const snapshot = await get(usersRef);
+
+        if (snapshot.exists()) {
+          const users = snapshot.val();
+          const patientSelect = document.getElementById("patientSelect");
+
+          // Clear existing options except the first one
+          while (patientSelect.options.length > 1) {
+            patientSelect.remove(1);
+          }
+
+          // Add patients to select
+          Object.entries(users).forEach(([userId, userData]) => {
+            // Check if user is a patient (either in root or in data object)
+            const role = userData.role || (userData.data && userData.data.role);
+            const name = userData.name || (userData.data && userData.data.name) || "Unknown";
+
+            if (role === "patient") {
+              const option = document.createElement("option");
+              option.value = userId;
+              option.textContent = name;
+              patientSelect.appendChild(option);
+            }
+          });
+
+          // Enable generate button if patients exist
+          const generateBtn = document.getElementById("generateBtn");
+          generateBtn.disabled = patientSelect.options.length <= 1;
+
+          // Set up event listeners
+          patientSelect.addEventListener("change", handlePatientChange);
+          generateBtn.addEventListener("click", generateReport);
+          document.getElementById("downloadBtn").addEventListener("click", downloadReport);
+
+          // Check for patient ID in URL query parameter
+          const urlParams = new URLSearchParams(window.location.search);
+          const patientId = urlParams.get('patientId');
+
+          if (patientId) {
+            // Select the patient in the dropdown
+            for (let i = 0; i < patientSelect.options.length; i++) {
+              if (patientSelect.options[i].value === patientId) {
+                patientSelect.selectedIndex = i;
+                break;
+              }
+            }
+
+            // Generate report automatically
+            generateReport();
+          }
+        } else {
+          console.log("No users found in database");
+        }
+      } catch (error) {
+        console.error("Error loading patients:", error);
+      }
+    }
+
+    // Handle patient selection change
+    function handlePatientChange(e) {
+      const generateBtn = document.getElementById("generateBtn");
+      generateBtn.disabled = !e.target.value;
+    }
+
+    // Generate report
+    async function generateReport() {
+      const patientId = document.getElementById("patientSelect").value;
+      if (!patientId) return;
+
+      try {
+        // Get patient data
+        const patientRef = ref(db, `users/${patientId}`);
+        const snapshot = await get(patientRef);
+
+        if (snapshot.exists()) {
+          const patientData = snapshot.val();
+
+          // Show report preview
+          document.getElementById("reportPreview").classList.remove("hidden");
+
+          // Set report date
+          const today = new Date();
+          document.getElementById("reportDate").textContent = today.toLocaleDateString();
+
+          // Set patient info
+          const name = patientData.name || (patientData.data && patientData.data.name) || "Unknown";
+          document.getElementById("patientName").textContent = name;
+
+          const lastActive = patientData.lastActive || "No activity recorded";
+          document.getElementById("lastActive").textContent = lastActive;
+
+          const createdAt = patientData.createdAt ? new Date(patientData.createdAt).toLocaleDateString() : "Unknown";
+          document.getElementById("accountCreated").textContent = createdAt;
+
+          // Get game data
+          const gameData = patientData.data || {};
+
+          // Process memory scores
+          let memoryScores = gameData.memoryScores || [];
+          if (!Array.isArray(memoryScores) && typeof memoryScores === 'object') {
+            memoryScores = Object.values(memoryScores);
+          }
+          memoryScores = Array.isArray(memoryScores) ? memoryScores : [];
+
+          // Process reaction times
+          let reactionTimes = gameData.reactionTimes || [];
+          if (!Array.isArray(reactionTimes) && typeof reactionTimes === 'object') {
+            reactionTimes = Object.values(reactionTimes);
+          }
+          reactionTimes = Array.isArray(reactionTimes) ? reactionTimes : [];
+
+          // Process sequence scores (check both possible paths)
+          let sequenceScores = gameData.sequenceRecall || gameData.sequenceScores || [];
+          if (!Array.isArray(sequenceScores) && typeof sequenceScores === 'object') {
+            sequenceScores = Object.values(sequenceScores);
+          }
+          sequenceScores = Array.isArray(sequenceScores) ? sequenceScores : [];
+
+          // Update charts
+          updateCharts(memoryScores, reactionTimes, sequenceScores);
+
+          // Generate analysis
+          generateAnalysis(memoryScores, reactionTimes, sequenceScores);
+        } else {
+          alert("Patient data not found.");
+        }
+      } catch (error) {
+        console.error("Error generating report:", error);
+        alert("Error generating report: " + error.message);
+      }
+    }
+
+    // Update charts
+    function updateCharts(memoryScores, reactionTimes, sequenceScores) {
+      // Memory chart
+      updateMemoryChart(memoryScores);
+
+      // Reaction chart
+      updateReactionChart(reactionTimes);
+
+      // Sequence chart
+      updateSequenceChart(sequenceScores);
+    }
+
+    // Update memory chart
+    function updateMemoryChart(scores) {
+      const ctx = document.getElementById('memoryChart').getContext('2d');
+
+      if (memoryChart) {
+        memoryChart.destroy();
+      }
+
+      const labels = scores.map((_, i) => `Attempt ${i + 1}`);
+
+      memoryChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Memory Match Level',
+            data: scores,
+            backgroundColor: 'rgba(16, 185, 129, 0.2)',
+            borderColor: 'rgba(16, 185, 129, 1)',
+            borderWidth: 2,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Level'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Update reaction chart
+    function updateReactionChart(times) {
+      const ctx = document.getElementById('reactionChart').getContext('2d');
+
+      if (reactionChart) {
+        reactionChart.destroy();
+      }
+
+      const labels = times.map((_, i) => `Attempt ${i + 1}`);
+
+      reactionChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Reaction Time (s)',
+            data: times,
+            backgroundColor: 'rgba(245, 158, 11, 0.2)',
+            borderColor: 'rgba(245, 158, 11, 1)',
+            borderWidth: 2,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Time (s)'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Update sequence chart
+    function updateSequenceChart(scores) {
+      const ctx = document.getElementById('sequenceChart').getContext('2d');
+
+      if (sequenceChart) {
+        sequenceChart.destroy();
+      }
+
+      const labels = scores.map((_, i) => `Attempt ${i + 1}`);
+
+      sequenceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Sequence Level',
+            data: scores,
+            backgroundColor: 'rgba(139, 92, 246, 0.2)',
+            borderColor: 'rgba(139, 92, 246, 1)',
+            borderWidth: 2,
+            tension: 0.3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Level'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Generate analysis
+    function generateAnalysis(memoryScores, reactionTimes, sequenceScores) {
+      // Memory analysis
+      let memoryAnalysis = "No memory game data available.";
+      if (memoryScores.length > 0) {
+        const firstScore = memoryScores[0];
+        const lastScore = memoryScores[memoryScores.length - 1];
+        const improvement = lastScore - firstScore;
+
+        if (improvement > 0) {
+          memoryAnalysis = `Patient has improved by ${improvement} levels since starting. `;
+        } else if (improvement < 0) {
+          memoryAnalysis = `Patient's performance has decreased by ${Math.abs(improvement)} levels. `;
+        } else {
+          memoryAnalysis = "Patient's performance has remained stable. ";
+        }
+
+        memoryAnalysis += `Current level: ${lastScore}. Total attempts: ${memoryScores.length}.`;
+      }
+      document.getElementById("memoryAnalysis").textContent = memoryAnalysis;
+
+      // Reaction analysis
+      let reactionAnalysis = "No reaction game data available.";
+      if (reactionTimes.length > 0) {
+        const firstTime = reactionTimes[0];
+        const lastTime = reactionTimes[reactionTimes.length - 1];
+        const improvement = firstTime - lastTime;
+
+        if (improvement > 0) {
+          reactionAnalysis = `Patient's reaction time has improved by ${improvement.toFixed(2)} seconds. `;
+        } else if (improvement < 0) {
+          reactionAnalysis = `Patient's reaction time has slowed by ${Math.abs(improvement).toFixed(2)} seconds. `;
+        } else {
+          reactionAnalysis = "Patient's reaction time has remained stable. ";
+        }
+
+        reactionAnalysis += `Current time: ${lastTime.toFixed(2)}s. Total attempts: ${reactionTimes.length}.`;
+      }
+      document.getElementById("reactionAnalysis").textContent = reactionAnalysis;
+
+      // Sequence analysis
+      let sequenceAnalysis = "No sequence game data available.";
+      if (sequenceScores.length > 0) {
+        const firstScore = sequenceScores[0];
+        const lastScore = sequenceScores[sequenceScores.length - 1];
+        const improvement = lastScore - firstScore;
+
+        if (improvement > 0) {
+          sequenceAnalysis = `Patient has improved by ${improvement} levels since starting. `;
+        } else if (improvement < 0) {
+          sequenceAnalysis = `Patient's performance has decreased by ${Math.abs(improvement)} levels. `;
+        } else {
+          sequenceAnalysis = "Patient's performance has remained stable. ";
+        }
+
+        sequenceAnalysis += `Current level: ${lastScore}. Total attempts: ${sequenceScores.length}.`;
+      }
+      document.getElementById("sequenceAnalysis").textContent = sequenceAnalysis;
+
+      // Overall progress summary
+      let progressSummary = "Patient has ";
+      const hasMemory = memoryScores.length > 0;
+      const hasReaction = reactionTimes.length > 0;
+      const hasSequence = sequenceScores.length > 0;
+
+      const gamesPlayed = [hasMemory, hasReaction, hasSequence].filter(Boolean).length;
+
+      if (gamesPlayed === 0) {
+        progressSummary = "Patient has not played any games yet.";
+      } else {
+        progressSummary += `played ${gamesPlayed} out of 3 available games. `;
+
+        // Calculate overall progress
+        let overallProgress = 0;
+
+        if (hasMemory) {
+          const memoryImprovement = memoryScores[memoryScores.length - 1] - memoryScores[0];
+          overallProgress += memoryImprovement > 0 ? 1 : (memoryImprovement < 0 ? -1 : 0);
+        }
+
+        if (hasReaction) {
+          const reactionImprovement = reactionTimes[0] - reactionTimes[reactionTimes.length - 1];
+          overallProgress += reactionImprovement > 0 ? 1 : (reactionImprovement < 0 ? -1 : 0);
+        }
+
+        if (hasSequence) {
+          const sequenceImprovement = sequenceScores[sequenceScores.length - 1] - sequenceScores[0];
+          overallProgress += sequenceImprovement > 0 ? 1 : (sequenceImprovement < 0 ? -1 : 0);
+        }
+
+        if (overallProgress > 0) {
+          progressSummary += "Overall, the patient is showing improvement in cognitive abilities.";
+        } else if (overallProgress < 0) {
+          progressSummary += "Overall, the patient is showing some decline in performance that may need attention.";
+        } else {
+          progressSummary += "Overall, the patient's performance has remained stable.";
+        }
+      }
+      document.getElementById("progressSummary").textContent = progressSummary;
+
+      // Recommendations
+      let recommendations = "";
+
+      if (gamesPlayed < 3) {
+        recommendations += "Encourage patient to try all available games for a more comprehensive assessment. ";
+      }
+
+      if (!hasMemory) {
+        recommendations += "Recommend starting with Memory Match game to improve short-term memory. ";
+      } else if (memoryScores.length < 5) {
+        recommendations += "Encourage more practice with Memory Match game. ";
+      }
+
+      if (!hasReaction) {
+        recommendations += "Recommend trying Reaction Timer game to improve processing speed. ";
+      } else if (reactionTimes.length < 5) {
+        recommendations += "Encourage more practice with Reaction Timer game. ";
+      }
+
+      if (!hasSequence) {
+        recommendations += "Recommend trying Sequence Recall game to improve working memory. ";
+      } else if (sequenceScores.length < 5) {
+        recommendations += "Encourage more practice with Sequence Recall game. ";
+      }
+
+      if (recommendations === "") {
+        recommendations = "Continue with current training regimen. Consider increasing difficulty as patient progresses.";
+      }
+
+      document.getElementById("recommendations").textContent = recommendations;
+    }
+
+    // Download report as PDF
+    function downloadReport() {
+      const { jsPDF } = window.jspdf;
+
+      // Create new PDF document
+      const doc = new jsPDF('p', 'mm', 'a4');
+      const reportContent = document.getElementById('reportContent');
+
+      // Use html2canvas to capture the report content
+      html2canvas(reportContent).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = 210; // A4 width in mm
+        const pageHeight = 295; // A4 height in mm
+        const imgHeight = canvas.height * imgWidth / canvas.width;
+        let heightLeft = imgHeight;
+        let position = 0;
+
+        // Add image to PDF
+        doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+
+        // Add new pages if content is too long
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight;
+          doc.addPage();
+          doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+
+        // Get patient name for filename
+        const patientName = document.getElementById('patientName').textContent.replace(/\s+/g, '_');
+        const date = new Date().toISOString().split('T')[0];
+
+        // Save PDF
+        doc.save(`MindFlex_Report_${patientName}_${date}.pdf`);
+      });
+    }
+  </script>
+</body>
+</html>
