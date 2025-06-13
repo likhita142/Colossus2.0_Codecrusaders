@@ -4,7 +4,59 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login — MindFlex</title>
+
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
+
+  <!-- Custom Tailwind Config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              200: '#ddd6fe',
+              300: '#c4b5fd',
+              400: '#a78bfa',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
+              800: '#5b21b6',
+              900: '#4c1d95',
+            },
+          },
+          fontFamily: {
+            sans: ['Poppins', 'sans-serif'],
+            display: ['Montserrat', 'sans-serif'],
+          },
+          boxShadow: {
+            'soft': '0 4px 20px rgba(0, 0, 0, 0.05)',
+            'glow': '0 0 15px rgba(139, 92, 246, 0.5)',
+          },
+          animation: {
+            'float': 'float 6s ease-in-out infinite',
+            'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-10px)' },
+            },
+          },
+        },
+      },
+    };
+  </script>
   <script type="module">
     // Import Firebase modules
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
@@ -27,20 +79,59 @@
     const auth = getAuth(app);
     const db = getDatabase(app);
 
+    // Utility functions for better UX
+    window.showError = (message) => {
+      const errorDiv = document.getElementById('errorMessage');
+      const errorText = errorDiv.querySelector('span');
+      if (errorText) {
+        errorText.textContent = message;
+      } else {
+        errorDiv.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i><span>${message}</span>`;
+      }
+      errorDiv.classList.remove('hidden');
+      setTimeout(() => errorDiv.classList.add('hidden'), 5000);
+    };
+
+    window.hideError = () => {
+      document.getElementById('errorMessage').classList.add('hidden');
+    };
+
+    window.validateEmail = (email) => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return emailRegex.test(email);
+    };
+
+    window.validatePassword = (password) => {
+      return password.length >= 6;
+    };
+
     // Login function
     window.handleLogin = async () => {
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value.trim();
+      const loginBtn = document.getElementById("loginBtn");
+      const loginSpinner = document.getElementById("loginSpinner");
+      const loginText = document.getElementById("loginText");
 
+      // Hide previous errors
+      hideError();
+
+      // Validation
       if (!email || !password) {
-        alert("Please enter both email and password");
+        showError("Please enter both email and password");
+        return;
+      }
+
+      if (!validateEmail(email)) {
+        showError("Please enter a valid email address");
         return;
       }
 
       try {
         // Show loading state
-        document.getElementById("loginBtn").disabled = true;
-        document.getElementById("loginBtn").textContent = "Logging in...";
+        loginBtn.disabled = true;
+        loginSpinner.classList.remove('hidden');
+        loginText.textContent = "Signing in...";
 
         // Sign in with Firebase Auth
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -61,24 +152,49 @@
             role: userData.role
           }));
 
+          // Show success message
+          loginText.textContent = "Success! Redirecting...";
+
           // Redirect based on role
-          if (userData.role === "doctor") {
-            window.location.href = "dashboard.html";
-          } else {
-            window.location.href = "index.html";
-          }
+          setTimeout(() => {
+            if (userData.role === "doctor") {
+              window.location.href = "dashboard.html";
+            } else {
+              window.location.href = "index.html";
+            }
+          }, 1000);
         } else {
-          alert("User data not found. Please contact support.");
-          document.getElementById("loginBtn").disabled = false;
-          document.getElementById("loginBtn").textContent = "Login";
+          showError("User data not found. Please contact support.");
+          resetLoginButton();
         }
       } catch (error) {
         console.error("Login error:", error);
-        alert("Login failed: " + error.message);
-        document.getElementById("loginBtn").disabled = false;
-        document.getElementById("loginBtn").textContent = "Login";
+        let errorMessage = "Login failed. Please try again.";
+
+        if (error.code === 'auth/user-not-found') {
+          errorMessage = "No account found with this email address.";
+        } else if (error.code === 'auth/wrong-password') {
+          errorMessage = "Incorrect password. Please try again.";
+        } else if (error.code === 'auth/invalid-email') {
+          errorMessage = "Invalid email address format.";
+        } else if (error.code === 'auth/too-many-requests') {
+          errorMessage = "Too many failed attempts. Please try again later.";
+        }
+
+        showError(errorMessage);
+        resetLoginButton();
       }
     };
+
+    function resetLoginButton() {
+      const loginBtn = document.getElementById("loginBtn");
+      const loginSpinner = document.getElementById("loginSpinner");
+      const loginText = document.getElementById("loginText");
+
+      loginBtn.disabled = false;
+      loginSpinner.classList.add('hidden');
+      loginText.textContent = "Sign In";
+    }
 
     // Signup function
     window.handleSignup = async () => {
@@ -86,16 +202,39 @@
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value.trim();
       const role = document.getElementById("role").value;
+      const signupBtn = document.getElementById("signupBtn");
+      const signupSpinner = document.getElementById("signupSpinner");
+      const signupText = document.getElementById("signupText");
 
+      // Hide previous errors
+      hideError();
+
+      // Validation
       if (!name || !email || !password) {
-        alert("Please fill in all fields");
+        showError("Please fill in all fields");
+        return;
+      }
+
+      if (name.length < 2) {
+        showError("Name must be at least 2 characters long");
+        return;
+      }
+
+      if (!validateEmail(email)) {
+        showError("Please enter a valid email address");
+        return;
+      }
+
+      if (!validatePassword(password)) {
+        showError("Password must be at least 6 characters long");
         return;
       }
 
       try {
         // Show loading state
-        document.getElementById("signupBtn").disabled = true;
-        document.getElementById("signupBtn").textContent = "Creating account...";
+        signupBtn.disabled = true;
+        signupSpinner.classList.remove('hidden');
+        signupText.textContent = "Creating account...";
 
         // Create user with Firebase Auth
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -122,17 +261,57 @@
           role: role
         }));
 
+        // Show success message
+        signupText.textContent = "Account created! Redirecting...";
+
         // Redirect based on role
-        if (role === "doctor") {
-          window.location.href = "dashboard.html";
-        } else {
-          window.location.href = "index.html";
-        }
+        setTimeout(() => {
+          if (role === "doctor") {
+            window.location.href = "dashboard.html";
+          } else {
+            window.location.href = "index.html";
+          }
+        }, 1000);
       } catch (error) {
         console.error("Signup error:", error);
-        alert("Signup failed: " + error.message);
-        document.getElementById("signupBtn").disabled = false;
-        document.getElementById("signupBtn").textContent = "Sign Up";
+        let errorMessage = "Account creation failed. Please try again.";
+
+        if (error.code === 'auth/email-already-in-use') {
+          errorMessage = "An account with this email already exists.";
+        } else if (error.code === 'auth/weak-password') {
+          errorMessage = "Password is too weak. Please choose a stronger password.";
+        } else if (error.code === 'auth/invalid-email') {
+          errorMessage = "Invalid email address format.";
+        }
+
+        showError(errorMessage);
+        resetSignupButton();
+      }
+    };
+
+    function resetSignupButton() {
+      const signupBtn = document.getElementById("signupBtn");
+      const signupSpinner = document.getElementById("signupSpinner");
+      const signupText = document.getElementById("signupText");
+
+      signupBtn.disabled = false;
+      signupSpinner.classList.add('hidden');
+      signupText.textContent = "Create Account";
+    }
+
+    // Password visibility toggle
+    window.togglePasswordVisibility = () => {
+      const passwordInput = document.getElementById('password');
+      const toggleIcon = document.getElementById('passwordToggleIcon');
+
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+      } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
       }
     };
 
@@ -142,26 +321,50 @@
       const loginTab = document.getElementById('loginTab');
       const signupTab = document.getElementById('signupTab');
       const nameField = document.getElementById('nameField');
+      const roleField = document.getElementById('roleField');
       const loginBtn = document.getElementById('loginBtn');
       const signupBtn = document.getElementById('signupBtn');
       const inputs = document.querySelectorAll('input');
 
-      // Set up tab switching
+      // Set up tab switching with improved animations
       loginTab.addEventListener('click', () => {
-        loginTab.classList.add('tab-active');
-        signupTab.classList.remove('tab-active');
-        nameField.style.display = 'none';
-        loginBtn.style.display = 'block';
-        signupBtn.style.display = 'none';
+        switchToLogin();
       });
 
       signupTab.addEventListener('click', () => {
+        switchToSignup();
+      });
+
+      // Tab switching functions
+      window.switchToLogin = () => {
+        hideError();
+        loginTab.classList.add('tab-active');
+        signupTab.classList.remove('tab-active');
+        nameField.classList.add('hidden');
+        roleField.classList.add('hidden');
+        loginBtn.classList.remove('hidden');
+        signupBtn.classList.add('hidden');
+
+        // Clear form
+        document.getElementById('name').value = '';
+        document.getElementById('email').value = '';
+        document.getElementById('password').value = '';
+      };
+
+      window.switchToSignup = () => {
+        hideError();
         signupTab.classList.add('tab-active');
         loginTab.classList.remove('tab-active');
-        nameField.style.display = 'block';
-        loginBtn.style.display = 'none';
-        signupBtn.style.display = 'block';
-      });
+        nameField.classList.remove('hidden');
+        roleField.classList.remove('hidden');
+        loginBtn.classList.add('hidden');
+        signupBtn.classList.remove('hidden');
+
+        // Clear form
+        document.getElementById('name').value = '';
+        document.getElementById('email').value = '';
+        document.getElementById('password').value = '';
+      };
 
       // Handle Enter key press
       inputs.forEach(input => {
@@ -176,60 +379,252 @@
           }
         });
       });
+
+      // Add input validation feedback
+      const emailInput = document.getElementById('email');
+      const passwordInput = document.getElementById('password');
+
+      emailInput.addEventListener('blur', () => {
+        if (emailInput.value && !validateEmail(emailInput.value)) {
+          emailInput.classList.add('border-red-500');
+        } else {
+          emailInput.classList.remove('border-red-500');
+        }
+      });
+
+      passwordInput.addEventListener('blur', () => {
+        if (passwordInput.value && !validatePassword(passwordInput.value)) {
+          passwordInput.classList.add('border-red-500');
+        } else {
+          passwordInput.classList.remove('border-red-500');
+        }
+      });
     });
   </script>
 </head>
-<body class="bg-purple-50 flex items-center justify-center h-screen">
-  <div class="bg-white p-10 rounded-xl shadow-md w-full max-w-md">
-    <h1 class="text-3xl font-bold text-purple-700 mb-4 text-center">🧠 MindFlex</h1>
+<body class="bg-gradient-to-br from-primary-100 via-purple-50 to-primary-200 min-h-screen flex items-center justify-center p-4 font-sans">
+  <!-- Background decorative elements -->
+  <div class="absolute inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute top-20 left-10 w-20 h-20 bg-primary-300 rounded-full opacity-20 animate-pulse-slow"></div>
+    <div class="absolute bottom-20 right-10 w-32 h-32 bg-purple-300 rounded-full opacity-20 animate-float"></div>
+    <div class="absolute top-1/3 right-1/4 w-16 h-16 bg-pink-300 rounded-full opacity-20 animate-pulse-slow"></div>
+  </div>
+
+  <!-- Main container -->
+  <div class="relative z-10 bg-white/90 backdrop-blur-md p-8 md:p-10 rounded-2xl shadow-soft w-full max-w-md border border-white/20">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-primary-500 to-purple-600 rounded-2xl mb-4 animate-float">
+        <i class="fas fa-brain text-2xl text-white"></i>
+      </div>
+      <h1 class="text-3xl font-bold font-display bg-gradient-to-r from-primary-600 to-purple-600 text-transparent bg-clip-text mb-2">
+        MindFlex
+      </h1>
+      <p class="text-gray-600 text-sm">Cognitive rehabilitation platform</p>
+    </div>
+
+    <!-- Error Message -->
+    <div id="errorMessage" class="hidden bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+      <i class="fas fa-exclamation-circle mr-2"></i>
+      <span id="errorText"></span>
+    </div>
 
     <!-- Tabs -->
-    <div class="flex border-b mb-6">
-      <button id="loginTab" data-tab="login" class="tab-active flex-1 py-2 font-medium text-purple-700 border-b-2 border-purple-600">Login</button>
-      <button id="signupTab" data-tab="signup" class="flex-1 py-2 font-medium text-gray-500 hover:text-purple-700">Sign Up</button>
+    <div class="flex bg-gray-100 rounded-xl p-1 mb-6">
+      <button id="loginTab" data-tab="login" class="tab-active flex-1 py-3 px-4 text-sm font-medium rounded-lg transition-all duration-200">
+        <i class="fas fa-sign-in-alt mr-2"></i>Sign In
+      </button>
+      <button id="signupTab" data-tab="signup" class="flex-1 py-3 px-4 text-sm font-medium text-gray-600 rounded-lg transition-all duration-200 hover:text-primary-600">
+        <i class="fas fa-user-plus mr-2"></i>Sign Up
+      </button>
     </div>
 
     <!-- Form -->
-    <div class="space-y-4">
+    <form class="space-y-5" onsubmit="return false;">
       <!-- Name field (hidden by default for login) -->
-      <div id="nameField" style="display: none;">
-        <input type="text" id="name" placeholder="Full Name" class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-purple-500" />
+      <div id="nameField" class="hidden">
+        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
+          <i class="fas fa-user mr-2 text-primary-500"></i>Full Name
+        </label>
+        <input
+          type="text"
+          id="name"
+          placeholder="Enter your full name"
+          class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+          autocomplete="name"
+        />
       </div>
 
       <!-- Email field -->
       <div>
-        <input type="email" id="email" placeholder="Email Address" class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-purple-500" />
+        <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+          <i class="fas fa-envelope mr-2 text-primary-500"></i>Email Address
+        </label>
+        <input
+          type="email"
+          id="email"
+          placeholder="Enter your email address"
+          class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+          autocomplete="email"
+          required
+        />
       </div>
 
       <!-- Password field -->
       <div>
-        <input type="password" id="password" placeholder="Password" class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-purple-500" />
+        <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+          <i class="fas fa-lock mr-2 text-primary-500"></i>Password
+        </label>
+        <div class="relative">
+          <input
+            type="password"
+            id="password"
+            placeholder="Enter your password"
+            class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+            autocomplete="current-password"
+            required
+          />
+          <button
+            type="button"
+            onclick="togglePasswordVisibility()"
+            class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-primary-600 transition-colors"
+          >
+            <i id="passwordToggleIcon" class="fas fa-eye"></i>
+          </button>
+        </div>
       </div>
 
-      <!-- Role selection -->
-      <div>
-        <select id="role" class="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-purple-500">
-          <option value="patient">Patient</option>
-          <option value="doctor">Doctor</option>
+      <!-- Role selection (hidden by default for login) -->
+      <div id="roleField" class="hidden">
+        <label for="role" class="block text-sm font-medium text-gray-700 mb-2">
+          <i class="fas fa-user-tag mr-2 text-primary-500"></i>Account Type
+        </label>
+        <select
+          id="role"
+          class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+        >
+          <option value="patient">Patient - Access cognitive games</option>
+          <option value="doctor">Doctor - Access patient dashboard</option>
         </select>
       </div>
 
       <!-- Login button -->
-      <button id="loginBtn" onclick="handleLogin()" class="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition duration-200">Login</button>
+      <button
+        id="loginBtn"
+        onclick="handleLogin()"
+        class="w-full bg-gradient-to-r from-primary-600 to-purple-600 text-white py-3 px-4 rounded-xl font-medium hover:from-primary-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 transform hover:-translate-y-0.5 shadow-glow hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+      >
+        <div class="flex items-center justify-center">
+          <i id="loginSpinner" class="fas fa-spinner fa-spin mr-2 hidden"></i>
+          <span id="loginText">Sign In</span>
+        </div>
+      </button>
 
       <!-- Sign Up button (hidden by default) -->
-      <button id="signupBtn" onclick="handleSignup()" style="display: none;" class="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition duration-200">Sign Up</button>
+      <button
+        id="signupBtn"
+        onclick="handleSignup()"
+        class="hidden w-full bg-gradient-to-r from-primary-600 to-purple-600 text-white py-3 px-4 rounded-xl font-medium hover:from-primary-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 transform hover:-translate-y-0.5 shadow-glow hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+      >
+        <div class="flex items-center justify-center">
+          <i id="signupSpinner" class="fas fa-spinner fa-spin mr-2 hidden"></i>
+          <span id="signupText">Create Account</span>
+        </div>
+      </button>
+    </form>
+
+    <!-- Back to home link -->
+    <div class="mt-6 text-center">
+      <a href="index.html" class="inline-flex items-center text-sm text-gray-600 hover:text-primary-600 transition-colors duration-200">
+        <i class="fas fa-arrow-left mr-2"></i>
+        Back to Home
+      </a>
     </div>
 
     <!-- Additional info -->
-    <p class="text-sm text-gray-500 mt-6 text-center">By continuing, you agree to MindFlex's Terms of Service and Privacy Policy.</p>
+    <p class="text-xs text-gray-500 mt-6 text-center leading-relaxed">
+      By continuing, you agree to MindFlex's
+      <a href="#" class="text-primary-600 hover:underline">Terms of Service</a>
+      and
+      <a href="#" class="text-primary-600 hover:underline">Privacy Policy</a>.
+    </p>
   </div>
 
-  <!-- Add some styling for the tabs -->
+  <!-- Custom Styles -->
   <style>
+    /* Tab styling */
     .tab-active {
-      border-bottom: 2px solid #7c3aed;
-      color: #7c3aed;
+      background: linear-gradient(135deg, #7c3aed, #a855f7);
+      color: white;
+      box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+    }
+
+    /* Input focus animations */
+    input:focus, select:focus {
+      transform: translateY(-1px);
+    }
+
+    /* Custom scrollbar for select */
+    select {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+      background-position: right 0.75rem center;
+      background-repeat: no-repeat;
+      background-size: 1.5em 1.5em;
+      padding-right: 2.5rem;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+    }
+
+    /* Error message animation */
+    #errorMessage {
+      animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Button hover effects */
+    button:not(:disabled):hover {
+      box-shadow: 0 8px 25px rgba(124, 58, 237, 0.4);
+    }
+
+    /* Loading spinner animation */
+    .fa-spinner {
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 480px) {
+      .backdrop-blur-md {
+        backdrop-filter: blur(8px);
+      }
+    }
+
+    /* Focus visible for accessibility */
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 2px solid #7c3aed;
+      outline-offset: 2px;
+    }
+
+    /* Smooth transitions for all interactive elements */
+    * {
+      transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      transition-duration: 200ms;
     }
   </style>
 </body>

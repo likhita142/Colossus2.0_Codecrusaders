@@ -28,11 +28,15 @@ class VoiceSettings {
       this.container = existingContainer;
       return;
     }
-    
+
     // Create container
     this.container = document.createElement('div');
     this.container.id = this.containerId;
-    this.container.className = 'fixed bottom-4 right-4 z-50';
+
+    // Position away from chatbot widget to prevent overlap
+    // Using right-20 instead of right-4 to avoid CXGenie widget collision
+    // Higher z-index (60) ensures voice settings appear above chatbot
+    this.container.className = 'fixed bottom-4 right-20 z-[60] md:right-20 sm:right-16';
     
     // Create toggle button
     const toggleButton = document.createElement('button');
